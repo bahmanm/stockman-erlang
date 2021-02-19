@@ -6,7 +6,7 @@
 2. Pretty print the invoices.
 
 ### Status ###
-TODO
+WIP
 
 # v2.0 #
 1. Read a CSV file into memory which contain sales invoice lines.
