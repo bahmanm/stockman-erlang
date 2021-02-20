@@ -1,6 +1,6 @@
 -module(stockman).
--compile(export_all).
-%%-export([main/1]).
+
+-export([main/1]).
 
 -record(invoice_line, { line_no, product, qty, price, line_amt }).
 -record(invoice, { doc_no, customer, date, discount, total, lines }).
