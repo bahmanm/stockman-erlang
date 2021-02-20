@@ -6,7 +6,12 @@
 2. Pretty print the invoices.
 
 ### Status ###
-WIP
+done
+
+```
+$ rebar3 escriptize
+$ _build/default/bin/stockman resources/sales-invoices-tiny.csv
+```
 
 # v2.0 #
 1. Read a CSV file into memory which contain sales invoice lines.
