@@ -6,7 +6,12 @@
 2. Pretty print the invoices.
 
 ### Status ###
-TODO
+done
+
+```
+$ rebar3 escriptize
+$ _build/default/bin/stockman resources/sales-invoices-tiny.csv
+```
 
 # v2.0 #
 1. Read a CSV file into memory which contain sales invoice lines.
@@ -34,7 +39,6 @@ TODO
 
 ### Status ###
 TODO
-
 
 # License #
 All files are under [Apache License v2.0](http://www.apache.org/licenses/LICENSE-2.0), unless otherwise specified.
