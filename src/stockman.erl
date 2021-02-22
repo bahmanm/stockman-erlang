@@ -5,23 +5,21 @@
 -record(invoice_line, { line_no, product, qty, price, line_amt }).
 -record(invoice, { doc_no, customer, date, discount, total, lines }).
 
-
 main([FilePath|[]]) ->
-    process(FilePath),
+    load_file(FilePath),
     erlang:halt(0).
 
-process(FilePath) ->
+load_file(FilePath) ->
     {ok, Contents} = file:read_file(FilePath),
     [_Header | Lines] = lists:filter(fun(Line) -> not string:is_empty(Line) end,
                                      string:split(Contents, "\n", all)),
-    Invoices = lists:foldl(fun process/2, dict:new(), Lines),
+    Invoices = lists:foldl(fun load_file_line/2, dict:new(), Lines),
     lists:foreach(fun(DocNo) -> pprint(dict:fetch(DocNo, Invoices)) end,
                   dict:fetch_keys(Invoices)).
 
-process([DocNo, Customer, Date, Total, Discount,
-         LineNo, Product, Qty, Price, LineAmt],
-        Invoices
-       ) ->
+load_file_line(Line, Invoices) ->
+    [DocNo, Customer, Date, Total, Discount,
+     LineNo, Product, Qty, Price, LineAmt] = string:split(Line, ",", all),
     InvoiceLine = new_invoice_line(LineNo, Product, Qty, Price, LineAmt),
     case dict:find(DocNo, Invoices) of
         {ok, #invoice{ lines = Lines } = Invoice} ->
@@ -33,10 +31,7 @@ process([DocNo, Customer, Date, Total, Discount,
             dict:store(DocNo,
                        Invoice#invoice{ lines = [InvoiceLine] },
                        Invoices)
-    end;
-
-process(Line, Invoices) ->
-    process(string:split(Line, ",", all), Invoices).
+    end.
 
 new_invoice(DocNo, Customer, Date, Discount, Total) ->
     try
