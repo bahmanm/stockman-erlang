@@ -1,21 +1,21 @@
 -module(stockman).
 
--export([main/1]).
+-compile(export_all).
+%-export([main/1]).
 
 -record(invoice_line, { line_no, product, qty, price, line_amt }).
 -record(invoice, { doc_no, customer, date, discount, total, lines }).
 
 main([FilePath|[]]) ->
-    load_file(FilePath),
+    Invoices = load_file(FilePath),
+    pprint(Invoices),
     erlang:halt(0).
 
 load_file(FilePath) ->
     {ok, Contents} = file:read_file(FilePath),
     [_Header | Lines] = lists:filter(fun(Line) -> not string:is_empty(Line) end,
                                      string:split(Contents, "\n", all)),
-    Invoices = lists:foldl(fun load_file_line/2, dict:new(), Lines),
-    lists:foreach(fun(DocNo) -> pprint(dict:fetch(DocNo, Invoices)) end,
-                  dict:fetch_keys(Invoices)).
+    lists:foldl(fun load_file_line/2, dict:new(), Lines).
 
 load_file_line(Line, Invoices) ->
     [DocNo, Customer, Date, Total, Discount,
@@ -75,4 +75,31 @@ pprint(#invoice{ doc_no = DocNo, customer = Customer, date = Date,
 pprint(#invoice_line{ line_no = LineNo, product = Product, qty = Qty,
                       price = Price, line_amt = LineAmt }
       ) ->
-    io:fwrite("~4B ~-20s ~6B ~10.2f ~12.2f~n", [LineNo, Product, Qty, Price, LineAmt]).
+    io:fwrite("~4B ~-20s ~6B ~10.2f ~12.2f~n", [LineNo, Product, Qty, Price, LineAmt]);
+
+pprint(Invoices) ->
+    DocNos = dict:fetch_keys(Invoices),
+    lists:foreach(fun(DocNo) -> pprint(dict:fetch(DocNo, Invoices)) end,
+                  DocNos).
+
+total_sales(Invoices) ->
+    dict:fold(fun(_, #invoice{ total=Total }, TotalSales) ->
+                      TotalSales + Total
+              end,
+              0.0,
+              Invoices).
+
+
+
+%%%
+%%% tests
+%%%
+
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+
+total_sales_test() ->
+    Invoices = load_file("./test/resources/sales-invoices-tiny.csv"),
+    148271.56 = total_sales(Invoices).
+
+-endif.
