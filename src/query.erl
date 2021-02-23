@@ -4,12 +4,16 @@
 
 total_sales(Invoices) ->
     dict:fold(
-      fun(_, #invoice{total=Total}, TotalSales) ->
-              TotalSales + Total
-      end,
-      0.0,
+      fun total_sales/3,
+      undefined,
       Invoices
      ).
+
+total_sales(_, #invoice{total=Total}, undefined) ->
+    Total;
+
+total_sales(_, #invoice{total=Total}, TotalSales) ->
+    TotalSales + Total.
 
 most_expensive_invoice(Invoices) ->
     dict:fold(fun most_expensive_invoice/3, undefined, Invoices).
@@ -28,6 +32,38 @@ most_expensive_invoice(_,
             Result
     end.
 
+most_expensive_product(Invoices) ->
+    dict:fold(fun most_expensive_product/3, undefined, Invoices).
+
+most_expensive_product(_,
+                       #invoice{lines=Lines},
+                       Result
+                      ) ->
+    most_expensive_product(Lines, Result).
+
+most_expensive_product([#invoice_line{product=Product, price=Price}|Lines],
+                       {_, ResultPrice}=Result
+                      ) ->
+    CurrentResult = if
+                        Price > ResultPrice ->
+                            {Product, Price};
+                        true ->
+                            Result
+                    end,
+    most_expensive_product(Lines, CurrentResult);
+
+most_expensive_product([#invoice_line{product=Product, price=Price}|Lines],
+                       undefined) ->
+    most_expensive_product(Lines, {Product, Price});
+
+most_expensive_product([],
+                       Result) ->
+    Result.
+
+
+
+
+
 %%%
 %%% tests
 %%%
@@ -36,7 +72,7 @@ most_expensive_invoice(_,
 -include_lib("eunit/include/eunit.hrl").
 
 total_sales_test() ->
-    0.0 = total_sales(dict:new()),
+    undefined = total_sales(dict:new()),
 
     Invoices = dict:from_list(
                  [{"i1", #invoice{doc_no="i1", total=10.0}},
@@ -54,5 +90,16 @@ most_expensive_invoice_test() ->
                   {"i3", #invoice{doc_no="i3", total=30.5}}]
                 ),
     #invoice{total=30.5} = most_expensive_invoice(Invoices).
+
+most_expensive_product_test() ->
+    undefined = most_expensive_product(dict:new()),
+
+    Invoices = dict:from_list(
+                 [{"i1", #invoice{lines=[#invoice_line{product="P1", price=10.0},
+                                         #invoice_line{product="P2", price=8.5}]}},
+                  {"i2", #invoice{lines=[#invoice_line{product="P3", price=1.0},
+                                         #invoice_line{product="P4", price=18.5}]}}]
+                ),
+    {"P4", 18.5} = most_expensive_product(Invoices).
 
 -endif.
