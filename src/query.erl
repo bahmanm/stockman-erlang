@@ -1,6 +1,8 @@
 -module(query).
 -include("./stockman.hrl").
--export([total_sales/1, most_expensive_invoice/1]).
+-export([total_sales/1,
+         most_expensive_invoice/1,
+         avg_price_per_product/1]).
 
 total_sales(Invoices) ->
     dict:fold(
@@ -61,6 +63,42 @@ most_expensive_product([],
     Result.
 
 
+avg_price_per_product(Invoices) ->
+    QtyAndTotalDict = dict:fold(
+                          fun avg_price_per_product/3,
+                          dict:new(),
+                          Invoices
+                         ),
+    AvgDict = dict:map(fun(_, {Qty, TotalQtyxPrice}) ->
+                               TotalQtyxPrice / Qty
+                       end,
+                       QtyAndTotalDict),
+    AvgList = dict:to_list(AvgDict),
+    SortedAvgList = lists:sort(fun({_,AvgA},{_,AvgB}) ->
+                                       AvgA > AvgB
+                               end,
+                               AvgList),
+    SortedAvgList.
+
+
+
+avg_price_per_product(_, #invoice{lines=Lines}, Result) ->
+    avg_price_per_product(Lines, Result).
+
+avg_price_per_product([#invoice_line{product=Product, price=Price, qty=Qty}|Lines],
+                      Result
+                     ) ->
+    CurrentResult = dict:update(Product,
+                                fun({RunningQty,RunningQtyxPrice}) ->
+                                        {Qty+RunningQty,
+                                         RunningQtyxPrice+(Qty*Price)}
+                                end,
+                                {Qty,Qty*Price},
+                                Result),
+    avg_price_per_product(Lines, CurrentResult);
+
+avg_price_per_product([], Result) ->
+    Result.
 
 
 
@@ -101,5 +139,17 @@ most_expensive_product_test() ->
                                          #invoice_line{product="P4", price=18.5}]}}]
                 ),
     {"P4", 18.5} = most_expensive_product(Invoices).
+
+avg_price_per_product_test() ->
+    [] = avg_price_per_product(dict:new()),
+
+    Invoices = dict:from_list(
+                 [{"i1",
+                   #invoice{lines=[#invoice_line{product="P1", price=10.0, qty=3},
+                                   #invoice_line{product="P2", price=10.0, qty=5}]}},
+                  {"i2",
+                   #invoice{lines=[#invoice_line{product="P2", price=12.0, qty=3},
+                                   #invoice_line{product="P3", price=18.5, qty=1}]}}]),
+    [{"P3", 18.5}, {"P2", 10.75}, {"P1", 10.0}] = avg_price_per_product(Invoices).
 
 -endif.
