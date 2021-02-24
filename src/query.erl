@@ -5,7 +5,8 @@
          most_expensive_product/1,
          avg_price_per_product/1,
          total_sales_per_customer/1,
-         customer_with_largest_sales/1]).
+         customer_with_largest_sales/1,
+         customers_with_least_sales/2]).
 
 total_sales(Invoices) ->
     dict:fold(
@@ -124,6 +125,13 @@ customer_with_largest_sales(Invoices) ->
         _ ->
             undefined
     end.
+
+customers_with_least_sales(N, Invoices) ->
+    Totals = total_sales_per_customer(Invoices),
+    RTotals = lists:reverse(Totals),
+    RResult = lists:sublist(RTotals, N),
+    lists:reverse(RResult).
+
 %%%
 %%% tests
 %%%
@@ -193,5 +201,26 @@ customer_with_largest_sales_test() ->
                   {"i3", #invoice{doc_no="i3", customer="c1", total=30.5}}]
                 ),
     "c1" = customer_with_largest_sales(Invoices).
+
+customers_with_least_sales_test() ->
+    [] = customers_with_least_sales(2, dict:new()),
+
+    Invoices = dict:from_list(
+                 [{"i1", #invoice{doc_no="i1", customer="c1", total=10.0}},
+                  {"i2", #invoice{doc_no="i2", customer="c2", total=20.0}},
+                  {"i3", #invoice{doc_no="i3", customer="c1", total=30.5}}]
+                ),
+    [{"c1", 40.5}, {"c2", 20.0}] = customers_with_least_sales(2, Invoices),
+
+    Invoices1 = dict:from_list(
+                  [{"i1", #invoice{doc_no="i1", customer="c1", total=10.0}},
+                   {"i2", #invoice{doc_no="i2", customer="c2", total=20.0}},
+                   {"i3", #invoice{doc_no="i3", customer="c3", total=5.0}},
+                   {"i4", #invoice{doc_no="i4", customer="c4", total=41.0}},
+                   {"i5", #invoice{doc_no="i5", customer="c5", total=18.0}},
+                   {"i6", #invoice{doc_no="i6", customer="c1", total=30.5}}]
+                 ),
+    [{"c2", 20.0}, {"c5", 18.0}, {"c3", 5.0}] = customers_with_least_sales(3, Invoices1).
+
 
 -endif.
