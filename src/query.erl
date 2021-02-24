@@ -4,7 +4,8 @@
          most_expensive_invoice/1,
          most_expensive_product/1,
          avg_price_per_product/1,
-         total_sales_per_customer/1]).
+         total_sales_per_customer/1,
+         customer_with_largest_sales/1]).
 
 total_sales(Invoices) ->
     dict:fold(
@@ -115,6 +116,14 @@ total_sales_per_customer_dict(Invoices) ->
               end,
               dict:new(),
               Invoices).
+
+customer_with_largest_sales(Invoices) ->
+    case total_sales_per_customer(Invoices) of
+        [{Customer,_}|_] ->
+            Customer;
+        _ ->
+            undefined
+    end.
 %%%
 %%% tests
 %%%
@@ -174,5 +183,15 @@ total_sales_per_customer_test() ->
                   {"i3", #invoice{doc_no="i3", customer="c1", total=30.5}}]
                 ),
     [{"c1", 40.5}, {"c2", 20.0}] = total_sales_per_customer(Invoices).
+
+customer_with_largest_sales_test() ->
+    undefined = customer_with_largest_sales(dict:new()),
+
+    Invoices = dict:from_list(
+                 [{"i1", #invoice{doc_no="i1", customer="c1", total=10.0}},
+                  {"i2", #invoice{doc_no="i2", customer="c2", total=20.0}},
+                  {"i3", #invoice{doc_no="i3", customer="c1", total=30.5}}]
+                ),
+    "c1" = customer_with_largest_sales(Invoices).
 
 -endif.
