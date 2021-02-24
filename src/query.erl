@@ -2,7 +2,9 @@
 -include("./stockman.hrl").
 -export([total_sales/1,
          most_expensive_invoice/1,
-         avg_price_per_product/1]).
+         most_expensive_product/1,
+         avg_price_per_product/1,
+         total_sales_per_customer/1]).
 
 total_sales(Invoices) ->
     dict:fold(
@@ -100,8 +102,19 @@ avg_price_per_product([#invoice_line{product=Product, price=Price, qty=Qty}|Line
 avg_price_per_product([], Result) ->
     Result.
 
+total_sales_per_customer(Invoices) ->
+    Totals = dict:to_list(total_sales_per_customer_dict(Invoices)),
+    lists:sort(fun({_, Total1}, {_, Total2}) -> Total1 > Total2 end, Totals).
 
-
+total_sales_per_customer_dict(Invoices) ->
+    dict:fold(fun(_, #invoice{customer=Customer, total=InvoiceTotal}, Result) ->
+                      dict:update(Customer,
+                                  fun(Total) -> Total + InvoiceTotal end,
+                                  InvoiceTotal,
+                                  Result)
+              end,
+              dict:new(),
+              Invoices).
 %%%
 %%% tests
 %%%
@@ -151,5 +164,15 @@ avg_price_per_product_test() ->
                    #invoice{lines=[#invoice_line{product="P2", price=12.0, qty=3},
                                    #invoice_line{product="P3", price=18.5, qty=1}]}}]),
     [{"P3", 18.5}, {"P2", 10.75}, {"P1", 10.0}] = avg_price_per_product(Invoices).
+
+total_sales_per_customer_test() ->
+    [] = total_sales_per_customer(dict:new()),
+
+    Invoices = dict:from_list(
+                 [{"i1", #invoice{doc_no="i1", customer="c1", total=10.0}},
+                  {"i2", #invoice{doc_no="i2", customer="c2", total=20.0}},
+                  {"i3", #invoice{doc_no="i3", customer="c1", total=30.5}}]
+                ),
+    [{"c1", 40.5}, {"c2", 20.0}] = total_sales_per_customer(Invoices).
 
 -endif.
