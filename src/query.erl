@@ -6,7 +6,8 @@
          avg_price_per_product/1,
          total_sales_per_customer/1,
          customer_with_largest_sales/1,
-         customers_with_least_sales/2]).
+         customers_with_least_sales/2,
+         date_with_largest_total_sales/1]).
 
 total_sales(Invoices) ->
     dict:fold(
@@ -132,6 +133,35 @@ customers_with_least_sales(N, Invoices) ->
     RResult = lists:sublist(RTotals, N),
     lists:reverse(RResult).
 
+date_with_largest_total_sales(Invoices) ->
+    DateTotals = dict:fold(fun(_, #invoice{date=Date, total=InvoiceTotal}, Result) ->
+                                   dict:update(Date,
+                                               fun(DateTotal) ->
+                                                       DateTotal + InvoiceTotal
+                                               end,
+                                               InvoiceTotal,
+                                               Result)
+                           end,
+                           dict:new(),
+                           Invoices),
+    case dict:to_list(DateTotals) of
+        [] ->
+            undefined;
+        [Elem1] ->
+            Elem1;
+        [Elem1|T] ->
+            lists:foldl(fun({_,Total1}=Elem, {_, Total2}=Acc) ->
+                                if
+                                    Total1 > Total2 ->
+                                        Elem;
+                                    true ->
+                                        Acc
+                                end
+                        end,
+                        Elem1,
+                        T)
+    end.
+
 %%%
 %%% tests
 %%%
@@ -222,5 +252,16 @@ customers_with_least_sales_test() ->
                  ),
     [{"c2", 20.0}, {"c5", 18.0}, {"c3", 5.0}] = customers_with_least_sales(3, Invoices1).
 
+date_with_largest_sales_test() ->
+    undefined = date_with_largest_total_sales(dict:new()),
+
+    Invoices = dict:from_list(
+                 [{"i1", #invoice{date="d1", total=10.0}},
+                  {"i2", #invoice{date="d2", total=20.0}},
+                  {"i3", #invoice{date="d1", total=30.0}},
+                  {"i4", #invoice{date="d3", total=5.0}},
+                  {"i5", #invoice{date="d2", total=10.0}}]
+                ),
+    {"d1", 40.0} = date_with_largest_total_sales(Invoices).
 
 -endif.
