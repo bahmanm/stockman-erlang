@@ -10,7 +10,7 @@ done
 
 ```
 $ rebar3 escriptize
-$ _build/default/bin/stockman resources/sales-invoices-tiny.csv
+$ _build/default/bin/stockman ./test/resources/sales-invoices-tiny.csv
 ```
 
 # v2.0 #
@@ -25,7 +25,12 @@ $ _build/default/bin/stockman resources/sales-invoices-tiny.csv
 9. Find the date with the largest total sales amount.
 
 ### Status ###
-TODO
+done
+
+```
+$ rebar3 escriptize
+$ _build/default/bin/stockman ./test/resources/sales-invoices-tiny.csv v2
+```
 
 # v3.0 #
 1. Read a CSV file into memory which contains product inventory.
