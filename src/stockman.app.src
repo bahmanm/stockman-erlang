@@ -7,7 +7,7 @@
     stdlib
    ]},
   {env,[]},
-  {modules, []},
+  {modules, [stockman, loader, printer, query, datagen]},
 
   {licenses, ["Apache 2.0"]},
   {links, []}
