@@ -10,7 +10,7 @@ done
 
 ```
 $ rebar3 escriptize
-$ _build/default/bin/stockman ./test/resources/sales-invoices-tiny.csv
+$ _build/default/bin/stockman v1 ./test/resources/sales-invoices-tiny.csv
 ```
 
 # v2.0 #
@@ -29,7 +29,7 @@ done
 
 ```
 $ rebar3 escriptize
-$ _build/default/bin/stockman ./test/resources/sales-invoices-tiny.csv v2
+$ _build/default/bin/stockman v2 ./test/resources/sales-invoices-tiny.csv
 ```
 
 # v3.0 #
@@ -43,7 +43,17 @@ $ _build/default/bin/stockman ./test/resources/sales-invoices-tiny.csv v2
 7. Print a list of invoices listing the problematic line(s) for each invoice.
 
 ### Status ###
-TODO
+done
+
+```
+## use datagen to generate dummy data
+$ rebar3 as datagen escriptize
+$ mkdir dummy-data
+$ _build/datagen/bin/datagen dummy-data 50 20 100
+## feed the data into stockman
+$ rebar3 escriptize
+$ _build/default/bin/stockman v3 dummy-data/invoices.csv dummy-data/inventory.csv
+```
 
 # License #
 All files are under [Apache License v2.0](http://www.apache.org/licenses/LICENSE-2.0), unless otherwise specified.

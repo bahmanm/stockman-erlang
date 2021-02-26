@@ -2,20 +2,25 @@
 -include("./stockman.hrl").
 -export([main/1]).
 
-main([Filepath]) ->
-    main([Filepath, "v1"]);
+main(["v1", Filepath]) ->
+    #{invoices := Invoices} = loader:load_file(invoice, Filepath),
+    v1(Invoices),
+    erlang:halt(0);
 
-main([Filepath,Version]) ->
-    Invoices = loader:load_file(Filepath),
-    case Version of
-        "v1" ->
-            v1(Invoices);
-        "v2" ->
-            v2(Invoices);
-        _ ->
-            io:fwrite("Invalid version")
-    end,
-    erlang:halt(0).
+main(["v2", Filepath]) ->
+    #{invoices := Invoices} = loader:load_file(invoice, Filepath),
+    v2(Invoices),
+    erlang:halt(0);
+
+main(["v3", InvoicesFilepath, InventoriesFilepath]) ->
+    Inventories = loader:load_file(inventory, InventoriesFilepath),
+    InvoicesResult = loader:load_file(invoice, InvoicesFilepath),
+    v3(Inventories, InvoicesResult),
+    erlang:halt(0);
+
+main(_) ->
+    io:format("~nusage:    v1|v2|v3  INVOICES_CSV [INVENTORY_CSV]").
+
 
 v1(Invoices) ->
     printer:pprint(Invoices).
@@ -68,3 +73,13 @@ v2(Invoices) ->
                       [Date, Total]),
             io:fwrite("~s~n", [Separator])
     end.
+
+v3(Inventories, #{invoices := InvoicesToImport, load_order := Order}) ->
+    {_, _, Errors} = sales:save_invoices(
+                       #{to_save => InvoicesToImport, order => Order,
+                         inventories => Inventories, saved => dict:new()}),
+    lists:foreach(fun(#{invoice := Invoice, line_no := LineNo}) ->
+                          io:format("Line No: ~B~n", [LineNo]),
+                          printer:pprint(Invoice)
+                  end,
+                 Errors).

@@ -1,7 +1,6 @@
 -module(datagen).
 -include("./stockman.hrl").
-%%-export([main/1]).
--compile(export_all).
+-export([main/1]).
 
 main([Outdir, NInventories, NCustomers, NSInvoices]) ->
     Inventories = gen_inventory(list_to_integer(NInventories)),
@@ -12,7 +11,7 @@ main([Outdir, NInventories, NCustomers, NSInvoices]) ->
     Invoices = gen_invoice(list_to_integer(NSInvoices), Customers, Inventories),
     InvoicesText = invoices_to_csv(Invoices),
     file:write_file(filename:join(Outdir, "invoices.csv"), InvoicesText),
-    erlang:halt(0).
+    erlang:halt(0);
 
 main(_) ->
     io:format("~nusage:  datagen OUTDIR N_INVENTORIES N_CUSTOMERS N_SALES_INVOICES~n"),
@@ -27,8 +26,8 @@ gen_date() ->
 gen_float() ->
     gen_float(0.0, 1000.0).
 
-gen_float(Min, Max) ->
-    F = round(rand:uniform() * rand:uniform(datagen:gen_integer(10, 100)) * 100) / 100,
+gen_float(Min, Max) when Min =< Max ->
+    F = round(rand:uniform() * rand:uniform(gen_integer(10, 100)) * 100) / 100,
     if
         F =< Max andalso F >= Min ->
             F;
@@ -39,7 +38,7 @@ gen_float(Min, Max) ->
 gen_integer() ->
     gen_integer(1, 9999).
 
-gen_integer(Min, Max) ->
+gen_integer(Min, Max) when Min =< Max ->
     N = floor((rand:uniform(120) * rand:uniform())
               + (rand:uniform(40) / rand:uniform())),
     if
