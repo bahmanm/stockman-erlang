@@ -1,5 +1,6 @@
 -module(sales).
 -include("./stockman.hrl").
+-export([save_invoices/1]).
 
 update_inventory(Product, Qty, Inventories) ->
     case dict:find(Product, Inventories) of
@@ -8,6 +9,22 @@ update_inventory(Product, Qty, Inventories) ->
         _ ->
             error
     end.
+
+save_invoices(#{to_save := ToSave, order := Order, inventories := Inventories, saved := Saved}) ->
+    save_invoices(ToSave, Order, Inventories, Saved).
+
+save_invoices(ToSave, Order, Inventories, Saved) ->
+    lists:foldl(fun(DocNo, {Ies, Ios, Errs}) ->
+                        Io = dict:fetch(DocNo, ToSave),
+                        case save_invoice(Io, Ies, Ios) of
+                            {ok, Ies1, Ios1} ->
+                                {Ies1, Ios1, Errs};
+                            {error, {line_no, LineNo}} ->
+                                {Ies, Ios, [#{invoice => Io, line_no => LineNo}|Errs]}
+                        end
+                end,
+                {Inventories, Saved, []},
+                Order).
 
 save_invoice(#invoice{doc_no=DocNo, lines=Lines}=Invoice, Inventories, Invoices) ->
     case save_invoice_line(Lines, Inventories) of
