@@ -10,7 +10,8 @@ update_inventory(Product, Qty, Inventories) ->
             error
     end.
 
-save_invoices(#{to_save := ToSave, order := Order, inventories := Inventories, saved := Saved}) ->
+save_invoices(#{to_save := ToSave, order := Order,
+                inventories := Inventories, saved := Saved}) ->
     save_invoices(ToSave, Order, Inventories, Saved).
 
 save_invoices(ToSave, Order, Inventories, Saved) ->
@@ -99,5 +100,31 @@ save_invoice_test() ->
                         lines=[#invoice_line{line_no=1, product="p1", qty=2}
                                #invoice_line{line_no=2, product="p2", qty=23}]},
     {error, {line_no, 2}} = save_invoice(Invoice1, I1, Invoices1).
+
+save_invoices_test() ->
+    I0 = dict:from_list(
+           [{"p1", #inventory{product="p1", qty=10}},
+            {"p2", #inventory{product="p2", qty=20}}]
+          ),
+    ToSave = dict:from_list([
+                              {"i1",
+                               #invoice{doc_no="i1",
+                                        lines=[#invoice_line{
+                                                  line_no=1, product="p1", qty=8},
+                                               #invoice_line{
+                                                  line_no=2, product="p2", qty=2}]}},
+                              {"i2",
+                               #invoice{doc_no="i2",
+                                        lines=[#invoice_line{
+                                                  line_no=1, product="p2", qty=20}]}}
+                             ]),
+
+    {I1, Saved, Errors} = save_invoices(#{to_save => ToSave, order => ["i1", "i2"],
+                                          inventories => I0, saved => dict:new()}),
+    #inventory{qty=2} = dict:fetch("p1", I1),
+    #inventory{qty=18} = dict:fetch("p2", I1),
+    true = dict:is_key("i1", Saved),
+    false = dict:is_key("i2", Saved),
+    [#{invoice := #invoice{doc_no="i2"}, line_no := 1}] = Errors.
 
 -endif.
