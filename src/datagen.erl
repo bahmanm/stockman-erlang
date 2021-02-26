@@ -27,7 +27,7 @@ gen_float() ->
     gen_float(0.0, 1000.0).
 
 gen_float(Min, Max) when Min =< Max ->
-    F = round(rand:uniform() * rand:uniform(datagen:gen_integer(10, 100)) * 100) / 100,
+    F = round(rand:uniform() * rand:uniform(gen_integer(10, 100)) * 100) / 100,
     if
         F =< Max andalso F >= Min ->
             F;
