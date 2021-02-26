@@ -17,3 +17,9 @@
          total,
          lines
         }).
+
+-record(inventory,
+        {
+         product,
+         qty
+        }).
