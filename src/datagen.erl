@@ -26,7 +26,7 @@ gen_date() ->
 gen_float() ->
     gen_float(0.0, 1000.0).
 
-gen_float(Min, Max) ->
+gen_float(Min, Max) when Min =< Max ->
     F = round(rand:uniform() * rand:uniform(datagen:gen_integer(10, 100)) * 100) / 100,
     if
         F =< Max andalso F >= Min ->
@@ -38,7 +38,7 @@ gen_float(Min, Max) ->
 gen_integer() ->
     gen_integer(1, 9999).
 
-gen_integer(Min, Max) ->
+gen_integer(Min, Max) when Min =< Max ->
     N = floor((rand:uniform(120) * rand:uniform())
               + (rand:uniform(40) / rand:uniform())),
     if
