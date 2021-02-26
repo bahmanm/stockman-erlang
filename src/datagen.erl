@@ -1,7 +1,6 @@
 -module(datagen).
 -include("./stockman.hrl").
-%%-export([main/1]).
--compile(export_all).
+-export([main/1]).
 
 main([Outdir, NInventories, NCustomers, NSInvoices]) ->
     Inventories = gen_inventory(list_to_integer(NInventories)),
