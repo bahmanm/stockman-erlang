@@ -12,7 +12,7 @@ main([Outdir, NInventories, NCustomers, NSInvoices]) ->
     Invoices = gen_invoice(list_to_integer(NSInvoices), Customers, Inventories),
     InvoicesText = invoices_to_csv(Invoices),
     file:write_file(filename:join(Outdir, "invoices.csv"), InvoicesText),
-    erlang:halt(0).
+    erlang:halt(0);
 
 main(_) ->
     io:format("~nusage:  datagen OUTDIR N_INVENTORIES N_CUSTOMERS N_SALES_INVOICES~n"),
