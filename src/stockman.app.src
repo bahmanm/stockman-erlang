@@ -4,11 +4,11 @@
   {registered, []},
   {applications,
    [kernel,
-    stdlib
-   ]},
+    stdlib,
+    getopt]},
   {env,[]},
-  {modules, [stockman, loader, printer, query, datagen, sales]},
+  {modules,
+   [stockman, loader, printer, query, datagen, sales]},
 
   {licenses, ["Apache 2.0"]},
-  {links, []}
- ]}.
+  {links, []}]}.
