@@ -36,10 +36,10 @@ $ _build/default/bin/stockman v2 ./test/resources/sales-invoices-tiny.csv
 1. Read a CSV file into memory which contains product inventory.
 2. Read a CSV file into memory which contain sales invoice lines.
   3. Check if the product referenced on each line has enough inventory.
-    4. If no, do not import the invoice the line belongs to (not just the line).
+    4. If no, do not import the invoice to which the line belongs.
     5. If yes, import the invoice line and update the inventory of the product
        accordingly.
-  6. It is important to process the lines in the order they appear in the CSV.
+  6. It is important to process the invoices in the order they appear in the CSV.
 7. Print a list of invoices listing the problematic line(s) for each invoice.
 
 ### Status ###
@@ -54,6 +54,28 @@ $ _build/datagen/bin/datagen dummy-data 50 20 100
 $ rebar3 escriptize
 $ _build/default/bin/stockman v3 dummy-data/invoices.csv dummy-data/inventory.csv
 ```
+
+# v4.0 #
+
+1. Read a CSV file into memory which contains product inventory.
+2. Read a CSV file into memory which contain sales invoice lines, where each invoice has a timestamp denoting the transaction date and time.
+  3. Check if the product referenced on each line has enough inventory.
+    4. If no, do not import the invoice to which the line belongs.
+    5. If yes, import the invoice line and update the inventory of the product
+       accordingly.
+  6. It is important to process any given invoice only once all the other invoices with earlier timestamps have been processed.
+7. Print a list of invoices listing the problematic line(s) for each invoice.
+
+# v5.0 #
+
+1. Read a CSV file into memory which contains product inventory.
+2. Read two CSV files into memory, one containing sales invoice lines and the other purchase invoice lines. Each invoice has a timestamp which denotes the transaction date and time.
+3. Check if the product referenced on each sales invoice line has enough inventory.
+    4. If no, do not import the sales invoice to which the line belongs.
+    5. If yes, import the invoice line and update the inventory of the product
+       accordingly.
+  6. It is important to process any given invoice only once all the other invoices (sales and purchase) with earlier timestamps have been processed.
+7. Print a list of sales invoices listing the problematic line(s) for each invoice.
 
 # License #
 All files are under [Apache License v2.0](http://www.apache.org/licenses/LICENSE-2.0), unless otherwise specified.
