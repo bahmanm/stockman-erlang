@@ -49,7 +49,7 @@ done
 ## use datagen to generate dummy data
 $ rebar3 as datagen escriptize
 $ mkdir dummy-data
-$ _build/datagen/bin/datagen dummy-data 50 20 100
+$ _build/datagen/bin/datagen -o dummy-data --inventories 50 --customers 20 --sales-invoices 100 --invoice-lines 12
 ## feed the data into stockman
 $ rebar3 escriptize
 $ _build/default/bin/stockman v3 dummy-data/invoices.csv dummy-data/inventory.csv
