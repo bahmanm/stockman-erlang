@@ -42,17 +42,17 @@ load_inventory_file_line(Line, Inventories) ->
     I = new_inventory(Product, Qty),
     dict:store(Product, I, Inventories).
 
-new_invoice(DocNo, Customer, Date, Discount, Total) ->
+new_invoice(DocNo, Customer, TrxTs, Discount, Total) ->
     try
         #invoice{doc_no=DocNo,
                  customer=Customer,
-                 date=Date,
+                 trx_ts=TrxTs,
                  discount=erlang:binary_to_integer(Discount),
                  total=erlang:binary_to_float(Total),
                  lines=[]}
     catch
         error:badarg -> throw({invalid_invoice,
-                               {DocNo, Customer, Date, Discount, Total}})
+                               {DocNo, Customer, TrxTs, Discount, Total}})
     end.
 
 new_invoice_line(LineNo, Product, Qty, Price, LineAmt) ->

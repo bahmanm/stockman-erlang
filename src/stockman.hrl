@@ -12,7 +12,7 @@
         {
          doc_no,
          customer,
-         date,
+         trx_ts,
          discount,
          total,
          lines

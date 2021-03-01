@@ -2,10 +2,10 @@
 -include("./stockman.hrl").
 -export([pprint/1]).
 
-pprint(#invoice{ doc_no = DocNo, customer = Customer, date = Date,
+pprint(#invoice{ doc_no = DocNo, customer = Customer, trx_ts = Ts,
                  discount = Discount, total = Total, lines = Lines }
       ) ->
-    io:fwrite("~n[~-15s] [~-20s] [~15s]~n", [DocNo, Customer, Date]),
+    io:fwrite("~n[~-15s] [~-20s] [~25s]~n", [DocNo, Customer, Ts]),
     SortedLines = lists:sort(
                     fun(#invoice_line{ line_no = LineNo1 },
                         #invoice_line{ line_no = LineNo2 }

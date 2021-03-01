@@ -30,7 +30,6 @@ main(Args) ->
 
 generate(#{outdir := Outdir, n_inventories := NInventories,
            n_customers := NCustomers, n_sinvoices := NSInvoices}=Options) ->
-    io:format("~p~n", [Options]),
     Inventories = gen_inventory(NInventories),
     InventoriesText = inventories_to_csv(Inventories),
     file:write_file(filename:join(Outdir, "inventory.csv"), InventoriesText),
@@ -42,9 +41,14 @@ generate(#{outdir := Outdir, n_inventories := NInventories,
 
 %%%%%%%%%%%%%
 
-gen_date() ->
-    io_lib:format("~4B-~2..0B-~2..0B",
-                  [gen_integer(2018,2020), gen_integer(1,12), gen_integer(1,28)]).
+gen_timestamp() ->
+    {MegaSecs, Secs, MicroSecs} = erlang:timestamp(),
+    {MegaDelta, Delta, MicroDelta} =
+        {gen_integer(0, 120), gen_integer(0, Secs), gen_integer(0, MicroSecs)},
+    Datetime = {MegaSecs - MegaDelta, Secs - Delta, MicroSecs - MicroDelta},
+    {{Y, Mo, D}, {H, Mi, S}} = calendar:now_to_datetime(Datetime),
+    io_lib:format("~4B-~2..0B-~2..0BT~2..0B:~2..0B:~2..0B",
+                 [Y, Mo, D, H, Mi, S]).
 
 gen_float() ->
     gen_float(0.0, 1000.0).
@@ -164,7 +168,7 @@ gen_invoice(NRemaining, {Customers, Inventories, Options}, Result) ->
             gen_invoice(NRemaining, {Customers, Inventories, Options}, Result);
         _ ->
             Customer = lists:nth(gen_integer(1,length(Customers)), Customers),
-            Date = gen_date(),
+            Timestamp = gen_timestamp(),
             NLines = gen_integer(1, maps:get(n_invoice_lines, Options)),
             Lines = gen_invoice_line(NLines, Inventories),
             SumLineAmt = lists:foldl(fun(#invoice_line{line_amt=Amt}, Acc) ->
@@ -174,7 +178,7 @@ gen_invoice(NRemaining, {Customers, Inventories, Options}, Result) ->
                                      Lines),
             Discount = gen_integer(1, 50),
             Total = (SumLineAmt * Discount) / 100,
-            Result1 = [#invoice{doc_no=DocNo, date=Date, customer=Customer,
+            Result1 = [#invoice{doc_no=DocNo, trx_ts=Timestamp, customer=Customer,
                                 discount=Discount,total=Total,lines=Lines}|Result],
             gen_invoice(NRemaining-1, {Customers, Inventories, Options}, Result1)
     end.
@@ -183,13 +187,13 @@ invoices_to_csv(Invoices) ->
     list_to_binary(invoices_to_csv(Invoices, [])).
 
 invoices_to_csv([], Result) ->
-    [<<"docNo,customer,date,total,discount,lineNo,product,qty,price,lineAmt\n">> |
+    [<<"docNo,customer,timestamp,total,discount,lineNo,product,qty,price,lineAmt\n">> |
      lists:reverse(Result)];
 
-invoices_to_csv([#invoice{doc_no=DocNo, date=Date, customer=Customer,
+invoices_to_csv([#invoice{doc_no=DocNo, trx_ts=TrxTs, customer=Customer,
                          discount=Discount,total=Total,lines=Lines}|T], Result) ->
     Prefix = io_lib:format("~s,~s,~s,~.2f,~B",
-                           [DocNo, Date, Customer, Total, Discount]),
+                           [DocNo, TrxTs, Customer, Total, Discount]),
     S = lists:map(fun(#invoice_line{line_no=LineNo, product=Product, qty=Qty,
                                     price=Price, line_amt=Amt}) ->
                           io_lib:format("~s,~B,~s,~B,~.2f,~.2f\n",

@@ -134,7 +134,8 @@ customers_with_least_sales(N, Invoices) ->
     lists:reverse(RResult).
 
 date_with_largest_total_sales(Invoices) ->
-    DateTotals = dict:fold(fun(_, #invoice{date=Date, total=InvoiceTotal}, Result) ->
+    DateTotals = dict:fold(fun(_, #invoice{trx_ts=Ts, total=InvoiceTotal}, Result) ->
+                                   Date = lists:sublist(Ts, 10),
                                    dict:update(Date,
                                                fun(DateTotal) ->
                                                        DateTotal + InvoiceTotal
@@ -256,11 +257,11 @@ date_with_largest_sales_test() ->
     undefined = date_with_largest_total_sales(dict:new()),
 
     Invoices = dict:from_list(
-                 [{"i1", #invoice{date="d1", total=10.0}},
-                  {"i2", #invoice{date="d2", total=20.0}},
-                  {"i3", #invoice{date="d1", total=30.0}},
-                  {"i4", #invoice{date="d3", total=5.0}},
-                  {"i5", #invoice{date="d2", total=10.0}}]
+                 [{"i1", #invoice{trx_ts="d1", total=10.0}},
+                  {"i2", #invoice{trx_ts="d2", total=20.0}},
+                  {"i3", #invoice{trx_ts="d1", total=30.0}},
+                  {"i4", #invoice{trx_ts="d3", total=5.0}},
+                  {"i5", #invoice{trx_ts="d2", total=10.0}}]
                 ),
     {"d1", 40.0} = date_with_largest_total_sales(Invoices).
 
