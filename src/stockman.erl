@@ -18,8 +18,14 @@ main(["v3", InvoicesFilepath, InventoriesFilepath]) ->
     v3(Inventories, InvoicesResult),
     erlang:halt(0);
 
+main(["v4", InvoicesFilepath, InventoriesFilepath]) ->
+    Inventories = loader:load_file(inventory, InventoriesFilepath),
+    InvoicesResult = loader:load_file(invoice, InvoicesFilepath),
+    v4(Inventories, InvoicesResult),
+    erlang:halt(0);
+
 main(_) ->
-    io:format("~nusage:    v1|v2|v3  INVOICES_CSV [INVENTORY_CSV]").
+    io:format("~nusage:    v1|v2|v3|v4  INVOICES_CSV [INVENTORY_CSV]").
 
 
 v1(Invoices) ->
@@ -75,11 +81,27 @@ v2(Invoices) ->
     end.
 
 v3(Inventories, #{invoices := InvoicesToImport, load_order := Order}) ->
-    {_, _, Errors} = sales:save_invoices(
-                       #{to_save => InvoicesToImport, order => Order,
-                         inventories => Inventories, saved => dict:new()}),
+    {_, _, Errors} =
+        sales:save_invoices(
+          #{to_save => InvoicesToImport,
+            order => Order,
+            inventories => Inventories,
+            saved => dict:new()}),
     lists:foreach(fun(#{invoice := Invoice, line_no := LineNo}) ->
                           io:format("Line No: ~B~n", [LineNo]),
                           printer:pprint(Invoice)
                   end,
-                 Errors).
+                  Errors).
+
+v4(Inventories, #{invoices := InvoicesToImport}) ->
+    {_, _, Errors} =
+        sales:save_invoices(
+          #{to_save => InvoicesToImport,
+            order => ascending_timestamp,
+            inventories => Inventories,
+            saved => dict:new()}),
+    lists:foreach(fun(#{invoice := Invoice, line_no := LineNo}) ->
+                          io:format("Line No: ~B~n", [LineNo]),
+                          printer:pprint(Invoice)
+                  end,
+                  Errors).
