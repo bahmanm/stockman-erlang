@@ -2,31 +2,52 @@
 -include("./stockman.hrl").
 -export([main/1]).
 
-main(["v1", Filepath]) ->
+main(#{mode := "v1", sales_invoices := Filepath}) ->
     #{invoices := Invoices} = loader:load_file(invoice, Filepath),
     v1(Invoices),
     erlang:halt(0);
 
-main(["v2", Filepath]) ->
+main(#{mode := "v2", sales_invoices := Filepath}) ->
     #{invoices := Invoices} = loader:load_file(invoice, Filepath),
     v2(Invoices),
     erlang:halt(0);
 
-main(["v3", InvoicesFilepath, InventoriesFilepath]) ->
+main(#{mode := "v3", sales_invoices := InvoicesFilepath,
+       inventories := InventoriesFilepath})
+->
     Inventories = loader:load_file(inventory, InventoriesFilepath),
     InvoicesResult = loader:load_file(invoice, InvoicesFilepath),
     v3(Inventories, InvoicesResult),
     erlang:halt(0);
 
-main(["v4", InvoicesFilepath, InventoriesFilepath]) ->
+main(#{mode := "v4", sales_invoices := InvoicesFilepath,
+       inventories := InventoriesFilepath})
+->
     Inventories = loader:load_file(inventory, InventoriesFilepath),
     InvoicesResult = loader:load_file(invoice, InvoicesFilepath),
     v4(Inventories, InvoicesResult),
     erlang:halt(0);
 
-main(_) ->
-    io:format("~nusage:    v1|v2|v3|v4  INVOICES_CSV [INVENTORY_CSV]").
-
+main(Args) ->
+    OptSpec =
+        [{mode, undefined, undefined, {string, "v4"},
+          "mode in which stockman operates - v1|v2|v3|v4"},
+         {sales_invoices, undefined, "sales-invoices", string,
+          "path to sales invoices csv file"},
+         {inventories, undefined, "inventories", string,
+          "path to inventories csv file"}],
+    case getopt:parse(OptSpec, Args) of
+        {ok, {OptionsTList, _}} ->
+            case maps:from_list(OptionsTList) of
+                #{mode := _, sales_invoices := _, inventories := _}=Options ->
+                    main(Options);
+                _ ->
+                    io:format("~s", [getopt:usage(OptSpec, "stockman")])
+            end;
+        {error, Details} ->
+            io:format("~s~n~p~n", [getopt:usage(OptSpec, "stockman"),
+                                   Details])
+    end.
 
 v1(Invoices) ->
     printer:pprint(Invoices).
