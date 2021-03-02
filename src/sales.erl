@@ -10,6 +10,11 @@ update_inventory(Product, Qty, Inventories) ->
             error
     end.
 
+save_invoices(#{to_save := ToSave, order := ascending_timestamp,
+                inventories := Inventories, saved := Saved}) ->
+    Order = sort_invoices_by_trx_ts(ToSave),
+    save_invoices(ToSave, Order, Inventories, Saved);
+
 save_invoices(#{to_save := ToSave, order := Order,
                 inventories := Inventories, saved := Saved}) ->
     save_invoices(ToSave, Order, Inventories, Saved).
@@ -46,6 +51,22 @@ save_invoice_line([#invoice_line{product=P, qty=Q}=Line|Lines], Inventories) ->
         _ ->
             {error, {line_no, Line#invoice_line.line_no}}
     end.
+
+sort_invoices_by_trx_ts(Invoices) ->
+    Unsorted =
+        dict:fold(fun(DocNo, #invoice{trx_ts=Ts}, Acc) ->
+                          [{DocNo, Ts}|Acc]
+                  end,
+                  [],
+                  Invoices),
+    Sorted =
+        lists:sort(fun({_,Ts1}, {_,Ts2}) ->
+                           Ts1 =< Ts2
+                   end,
+                   Unsorted),
+    lists:map(fun({DocNo, _}) -> DocNo end,
+              Sorted).
+
 
 
 %%% %%%%%%%%
@@ -126,5 +147,14 @@ save_invoices_test() ->
     true = dict:is_key("i1", Saved),
     false = dict:is_key("i2", Saved),
     [#{invoice := #invoice{doc_no="i2"}, line_no := 1}] = Errors.
+
+sort_invoices_by_trx_ts_test() ->
+    Invoices =
+        dict:from_list(
+          [{"i1", #invoice{doc_no="i1", trx_ts="10"}},
+           {"i2", #invoice{doc_no="i2", trx_ts="14"}},
+           {"i3", #invoice{doc_no="i2", trx_ts="15"}},
+           {"i4", #invoice{doc_no="i2", trx_ts="11"}}]),
+    ["i1", "i4", "i2", "i3"] = sort_invoices_by_trx_ts(Invoices).
 
 -endif.
