@@ -110,7 +110,7 @@ total_sales_per_customer(Invoices) ->
     lists:sort(fun({_, Total1}, {_, Total2}) -> Total1 > Total2 end, Totals).
 
 total_sales_per_customer_dict(Invoices) ->
-    dict:fold(fun(_, #invoice{customer=Customer, total=InvoiceTotal}, Result) ->
+    dict:fold(fun(_, #invoice{bpartner=Customer, total=InvoiceTotal}, Result) ->
                       dict:update(Customer,
                                   fun(Total) -> Total + InvoiceTotal end,
                                   InvoiceTotal,
