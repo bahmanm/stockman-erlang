@@ -2,23 +2,36 @@
 -include("./stockman.hrl").
 -export([main/1]).
 
+-type inventories() :: dict:dict(string(), #inventory{}).
+-type invoices() :: dict:dict(string(), #invoice{}) | undefined.
+
+-record(data,
+        {customers :: [string()],
+         vendors :: [string()],
+         inventories :: inventories(),
+         sinvoices :: invoices(),
+         pinvoices :: invoices()}).
+
 main(Args) ->
     OptSpec =
         [{outdir, $o, "output-directory", {string, "."},
           "directory to store the generated csv files"},
          {n_inventories, undefined, "inventories", integer,
           "how many inventory records to generate"},
-         {n_sinvoices, undefined, "sales-invoices", integer,
+         {n_customers, undefined, "customers", {integer, 0},
+          "limit the number of unique customers"},
+         {n_vendors, undefined, "vendors", {integer, 0},
+          "limit the number of unique vendors"},
+         {n_sinvoices, undefined, "sales-invoices", {integer, 0},
           "how many sales invoices to generate"},
-         {n_customers, undefined, "customers", integer,
-          "how many customers to generate"},
          {n_invoice_lines, undefined, "invoice-lines", {integer, 10},
-          "limit the number of lines per invoice"}],
+          "limit the number of lines per invoice"},
+         {n_pinvoices, undefined, "purchase-invoices", {integer, 0},
+          "how many purchase invoices to generate"}],
     case getopt:parse(OptSpec, Args) of
         {ok, {OptionsTList, _}} ->
             case maps:from_list(OptionsTList) of
-                #{outdir := _, n_inventories := _,
-                  n_sinvoices := _, n_customers := _}=Options ->
+                #{n_inventories := _}=Options ->
                     generate(Options);
                 _ ->
                     io:format("~s", [getopt:usage(OptSpec, "datagen")])
@@ -28,16 +41,41 @@ main(Args) ->
                                    Details])
     end.
 
-generate(#{outdir := Outdir, n_inventories := NInventories,
-           n_customers := NCustomers, n_sinvoices := NSInvoices}=Options) ->
-    Inventories = gen_inventory(NInventories),
-    InventoriesText = inventories_to_csv(Inventories),
-    file:write_file(filename:join(Outdir, "inventory.csv"), InventoriesText),
-    %
-    Customers = gen_customers(NCustomers),
-    Invoices = gen_invoice(NSInvoices, {Customers, Inventories, Options}),
-    InvoicesText = invoices_to_csv(Invoices),
-    file:write_file(filename:join(Outdir, "invoices.csv"), InvoicesText).
+generate(#{outdir := Outdir,
+           n_customers := NCustomers,
+           n_vendors := NVendors,
+           n_inventories := NInventories,
+           n_sinvoices := NSInvoices,
+           n_pinvoices := NPInvoices,
+           n_invoice_lines := NLines}) ->
+    Data0 = #data{
+               customers = gen_customers(NCustomers),
+               vendors = gen_vendors(NVendors),
+               inventories = gen_inventories(NInventories)},
+    Data1 = Data0#data{
+              sinvoices = gen_sinvoices(NSInvoices, NLines, Data0)},
+    Data2 = Data1#data{
+              pinvoices = gen_pinvoices(NPInvoices, NLines, Data1)},
+    dump(Data2, Outdir).
+
+%%%%%%%%%%%%%
+
+dump(#data{inventories=Inventories,
+           sinvoices=SInvoices,
+           pinvoices=PInvoices},
+     Outdir) ->
+    file:write_file(filename:join(Outdir, "inventories.csv"),
+                    inventories_to_csv(Inventories)),
+    case SInvoices of
+        undefined -> ok;
+        _ -> file:write_file(filename:join(Outdir, "sinvoices.csv"),
+                             invoices_to_csv(SInvoices))
+    end,
+    case PInvoices of
+        undefined -> ok;
+        _ -> file:write_file(filename:join(Outdir, "pinvoices.csv"),
+                             invoices_to_csv(PInvoices))
+    end.
 
 %%%%%%%%%%%%%
 
@@ -75,7 +113,14 @@ gen_integer(Min, Max) when Min =< Max ->
             gen_integer(Min, Max)
     end.
 
+randpick(L) ->
+    lists:nth(gen_integer(1, length(L)),
+              L).
+
 %%%%%%%%%%%%%
+
+-spec dict_rand_iterator(Dict :: dict:dict(any(), Value)) -> Fun when
+      Fun :: fun(() -> {Value, Fun}).
 
 dict_rand_iterator(Dict) ->
     fun() ->
@@ -87,117 +132,164 @@ dict_rand_iterator(Dict) ->
 
 %%%%%%%%%%%%%
 
-gen_inventory(NRecords) ->
-    gen_inventory(NRecords, dict:new()).
-
-gen_inventory(0, Inventories) ->
-    Inventories;
-
-gen_inventory(NRemaining, Inventories) ->
-    Product = io_lib:format("P-~4..0B", [gen_integer()]),
-    case dict:is_key(Product, Inventories) of
-        true ->
-            gen_inventory(NRemaining, Inventories);
-        _ ->
-            Qty = gen_integer(1, 1000) + gen_integer(1, 1000),
-            NewInventories = dict:store(Product,
-                                      #inventory{product=Product, qty=Qty},
-                                      Inventories),
-            gen_inventory(NRemaining-1, NewInventories)
-    end.
+gen_inventories(N) ->
+    GenerateInventories =
+        fun GenInventories(0, Acc) ->
+                Acc;
+            GenInventories(M, Acc) ->
+                P = io_lib:format("P-~4..0B", [gen_integer()]),
+                case dict:is_key(P, Acc) of
+                    true ->
+                        GenInventories(M, Acc);
+                    _ ->
+                        Qty = gen_integer(1, 1000) + gen_integer(1, 1000),
+                        Inventory = #inventory{product=P, qty=Qty},
+                        GenInventories(M-1, dict:store(P, Inventory, Acc))
+                end
+        end,
+    GenerateInventories(N, dict:new()).
 
 inventories_to_csv(Inventories) ->
-    lists:reverse(
-      inventories_to_csv(
-        dict:to_list(Inventories), [<<"product,qty\n">>])).
-
-inventories_to_csv([],Result) ->
-    Result;
-
-inventories_to_csv([{_, #inventory{product=Product,qty=Qty}}|T], Result) ->
-    S = list_to_binary(io_lib:format("~s,~B~n", [Product, Qty])),
-    inventories_to_csv(T, [S|Result]).
+    lists:reverse(dict:fold(fun(P, #inventory{qty=Q}, Acc) ->
+                                    S = io_lib:format("~s,~B~n", [P, Q]),
+                                    [list_to_binary(S)|Acc]
+                            end,
+                            [<<"product,qty\n">>],
+                           Inventories)).
 
 %%%%%%%%%%%%%
 
 gen_customers(N) ->
-    lists:reverse(gen_customers(N, [])).
+    gen_bpartner(N, $C).
 
-gen_customers(0, Result) ->
-    Result;
+gen_vendors(N) ->
+    gen_bpartner(N, $V).
 
-gen_customers(NRemaining, Result) ->
-    C = io_lib:format("C-~4..0B", [gen_integer()]),
-    case lists:any(fun(C1) -> C =:= C1 end, Result) of
-        true ->
-            gen_customers(NRemaining, Result);
-        _ ->
-            gen_customers(NRemaining-1, [C|Result])
+-spec gen_bpartner(N :: integer(), Prefix :: char()) -> [string()] | [].
+
+gen_bpartner(N, Prefix) ->
+    GenBPartners =
+        fun F(0, Acc) ->
+                Acc;
+            F(M, Acc) ->
+                P = io_lib:format("~c-~4..0B", [Prefix, gen_integer()]),
+                case lists:any(fun(Q) -> Q =:= P end, Acc) of
+                    true ->
+                        F(M, Acc);
+                    _ ->
+                        F(M-1, [P|Acc])
+                end
+        end,
+    GenBPartners(N, []).
+
+%%%%%%%%%%%%%
+
+gen_sinvoice_docno(Invoices) ->
+    gen_docno("SI", Invoices).
+
+gen_pinvoice_docno(Invoices) ->
+    gen_docno("PI", Invoices).
+
+-spec gen_docno(Prefix :: string(), Invoices :: invoices()) -> string().
+gen_docno(Prefix, Invoices) ->
+    DocNo = io_lib:format("~s-~4..0B", [Prefix, gen_integer()]),
+    case dict:is_key(DocNo, Invoices) of
+        true -> gen_docno(Prefix, Invoices);
+        _ -> DocNo
     end.
 
 %%%%%%%%%%%%%
 
-gen_invoice_line(N, Inventories) ->
-    gen_invoice_line(N, dict_rand_iterator(Inventories), []).
+gen_invoices(_, 0, _, _) ->
+    undefined;
 
-gen_invoice_line(0, _, Result) ->
-    Result;
+gen_invoices(Type, N, MaxNLines, Data) ->
+    {DocNoGenerator, BPartners} =
+        case Type of
+            sales -> {fun gen_sinvoice_docno/1, Data#data.customers};
+            purchase -> {fun gen_pinvoice_docno/1, Data#data.vendors}
+        end,
+    ComputeTotal =
+        fun(Lines, Discount) ->
+                SumLineAmt =
+                    lists:foldl(fun(#invoice_line{line_amt=Amt}, Acc) ->
+                                        Amt + Acc
+                                end,
+                                0.0,
+                                Lines),
+                (SumLineAmt * Discount) / 100
+        end,
+    GenerateInvoices =
+        fun GenInvoices(0, Invoices) ->
+                Invoices;
+           GenInvoices(M, Invoices) ->
+                DocNo = DocNoGenerator(Invoices),
+                BPartner = randpick(BPartners),
+                Timestamp = gen_timestamp(),
+                NLines = gen_integer(1, MaxNLines),
+                Lines = gen_invoice_lines(NLines, Data#data.inventories),
+                Discount = gen_integer(1, 50),
+                Total = ComputeTotal(Lines, Discount),
+                Invoice = #invoice{
+                             type=Type, doc_no=DocNo, trx_ts=Timestamp,
+                             bpartner=BPartner, discount=Discount,
+                             total=Total, lines=Lines},
+                GenInvoices(M-1, dict:store(DocNo, Invoice, Invoices))
+        end,
+    GenerateInvoices(N, dict:new()).
 
-gen_invoice_line(NRemaining, NextInventoryF, Result) ->
-    {#inventory{product=Product}, F} = NextInventoryF(),
-    Qty = gen_integer(1, 50),
-    Price = gen_float(),
-    Amt = Qty * Price,
-    gen_invoice_line(NRemaining-1, F,
-                     [#invoice_line{line_no=NRemaining, product=Product, qty=Qty,
-                                    price=Price, line_amt=Amt}|Result]).
+gen_sinvoices(N, NLines, Data) ->
+    gen_invoices(sales, N, NLines, Data).
 
-gen_invoice(N, {Customers, Inventories, Options}) ->
-    gen_invoice(N, {Customers, Inventories, Options}, []).
+gen_pinvoices(N, NLines, Data) ->
+    gen_invoices(purchase, N, NLines, Data).
 
-gen_invoice(0, _, Result) ->
-    lists:reverse(Result);
+%%%%%%%%%%%%%
 
-gen_invoice(NRemaining, {Customers, Inventories, Options}, Result) ->
-    DocNo = io_lib:format("SI-~4..0B", [gen_integer()]),
-    case lists:any(fun(#invoice{doc_no=IDocNo}) ->
-                           IDocNo =:= DocNo
-                   end,
-                   Result) of
-        true ->
-            gen_invoice(NRemaining, {Customers, Inventories, Options}, Result);
-        _ ->
-            Customer = lists:nth(gen_integer(1,length(Customers)), Customers),
-            Timestamp = gen_timestamp(),
-            NLines = gen_integer(1, maps:get(n_invoice_lines, Options)),
-            Lines = gen_invoice_line(NLines, Inventories),
-            SumLineAmt = lists:foldl(fun(#invoice_line{line_amt=Amt}, Acc) ->
-                                             Amt + Acc
-                                     end,
-                                     0.0,
-                                     Lines),
-            Discount = gen_integer(1, 50),
-            Total = (SumLineAmt * Discount) / 100,
-            Result1 = [#invoice{doc_no=DocNo, trx_ts=Timestamp, customer=Customer,
-                                discount=Discount,total=Total,lines=Lines}|Result],
-            gen_invoice(NRemaining-1, {Customers, Inventories, Options}, Result1)
-    end.
+gen_invoice_lines(N, Inventories) ->
+    NextInventory = dict_rand_iterator(Inventories),
+    GenerateInvoiceLines =
+        fun GenInvoiceLines(0, Lines, _) ->
+                Lines;
+            GenInvoiceLines(M, Lines, F) ->
+                {#inventory{product=Product}, NextF} = F(),
+                Qty = gen_integer(1, 50),
+                Price = gen_float(),
+                Amt = Qty * Price,
+                Line = #invoice_line{line_no=M, product=Product, qty=Qty,
+                                     price=Price, line_amt=Amt},
+                GenInvoiceLines(M-1, [Line|Lines], NextF)
+        end,
+    GenerateInvoiceLines(N, [], NextInventory).
+
+%%%%%%%%%%%%%
 
 invoices_to_csv(Invoices) ->
-    list_to_binary(invoices_to_csv(Invoices, [])).
-
-invoices_to_csv([], Result) ->
-    [<<"docNo,customer,timestamp,total,discount,lineNo,product,qty,price,lineAmt\n">> |
-     lists:reverse(Result)];
-
-invoices_to_csv([#invoice{doc_no=DocNo, trx_ts=TrxTs, customer=Customer,
-                         discount=Discount,total=Total,lines=Lines}|T], Result) ->
-    Prefix = io_lib:format("~s,~s,~s,~.2f,~B",
-                           [DocNo, TrxTs, Customer, Total, Discount]),
-    S = lists:map(fun(#invoice_line{line_no=LineNo, product=Product, qty=Qty,
-                                    price=Price, line_amt=Amt}) ->
-                          io_lib:format("~s,~B,~s,~B,~.2f,~.2f\n",
-                                        [Prefix, LineNo, Product, Qty, Price, Amt])
-                  end,
-                  Lines),
-    invoices_to_csv(T, [S|Result]).
+    HeaderLine =
+        list_to_binary(
+          lists:join(",",
+                     ["docType", "docNo", "bPartner", "timestamp",
+                      "total", "discount",
+                      "lineNo", "product", "qty", "price", "lineAmt"
+                      "\n"])),
+    LinesToCsv =
+        fun F([], _, Acc) ->
+                Acc;
+            F([#invoice_line{line_no=LineNo, product=Product,
+                             qty=Qty, price=Price, line_amt=Amt}|Lines],
+              Prefix, Acc) ->
+                S = io_lib:format("~s,~B,~s,~B,~.2f,~.2f~n",
+                                  [Prefix, LineNo, Product, Qty, Price, Amt]),
+                F(Lines, Prefix, [S|Acc])
+        end,
+    InvoiceToCsv =
+        fun(_, #invoice{type=Type, doc_no=DocNo, trx_ts=TrxTs,
+                        bpartner=BPartner, discount=Discount, total=Total,
+                        lines=Lines}, Acc) ->
+                Prefix =
+                    io_lib:format("~s,~s,~s,~s,~.2f,~B",
+                                  [Type, DocNo, BPartner, TrxTs, Total, Discount]),
+                LinesToCsv(Lines, Prefix, Acc)
+        end,
+    [HeaderLine|
+     lists:reverse(dict:fold(InvoiceToCsv, [], Invoices))].
