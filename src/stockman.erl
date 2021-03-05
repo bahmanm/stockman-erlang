@@ -47,7 +47,8 @@ main(Args) ->
         {error, Details} ->
             io:format("~s~n~p~n", [getopt:usage(OptSpec, "stockman"),
                                    Details])
-    end.
+    end,
+    erlang:halt(0).
 
 v1(Invoices) ->
     printer:pprint(Invoices).

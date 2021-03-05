@@ -1,25 +1,26 @@
 -record(invoice_line,
         {
-         line_no,
-         product,
-         qty,
-         price,
-         line_amt
+         line_no :: integer(),
+         product :: string(),
+         qty :: integer(),
+         price :: float(),
+         line_amt :: float()
         }).
 
 
 -record(invoice,
         {
-         doc_no,
-         customer,
-         trx_ts,
-         discount,
-         total,
-         lines
+         doc_no :: string(),
+         bpartner :: string(),
+         type :: atom(),
+         trx_ts :: string(),
+         discount :: integer(),
+         total :: float(),
+         lines :: [#invoice_line{}]
         }).
 
 -record(inventory,
         {
-         product,
-         qty
+         product :: string(),
+         qty :: integer()
         }).

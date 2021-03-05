@@ -2,12 +2,16 @@
 -include_lib("./stockman.hrl").
 -export([load_file/2]).
 
+-spec load_file(invoice | inventory, Filepath :: string()) ->
+          dict:dict(string(), #inventory{})
+              | #{load_order => [string()],
+                  invoices => dict:dict(string(), #invoice{})}.
 load_file(invoice, Filepath) ->
     Lines = load_lines(Filepath),
-    #{load_order := Order} = Result = lists:foldl(fun load_invoice_file_line/2,
-                                                    #{invoices => dict:new(),
-                                                      load_order => []},
-                                                    Lines),
+    #{load_order := Order} = Result =
+        lists:foldl(fun load_invoice_file_line/2,
+                    #{invoices => dict:new(), load_order => []},
+                    Lines),
     Result#{load_order := lists:reverse(Order)};
 
 load_file(inventory, Filepath) ->
@@ -21,7 +25,7 @@ load_lines(Filepath) ->
     Lines.
 
 load_invoice_file_line(Line, #{invoices := Invoices, load_order := Order}=Result) ->
-    [DocNo, Customer, Date, Total, Discount,
+    [Type, DocNo, BPartner, Date, Total, Discount,
      LineNo, Product, Qty, Price, LineAmt] = string:split(Line, ",", all),
     InvoiceLine = new_invoice_line(LineNo, Product, Qty, Price, LineAmt),
     case dict:find(DocNo, Invoices) of
@@ -30,7 +34,11 @@ load_invoice_file_line(Line, #{invoices := Invoices, load_order := Order}=Result
                                            Invoice#invoice{lines=[InvoiceLine|Lines]},
                                            Invoices)};
         _ ->
-            Invoice = new_invoice(DocNo, Customer, Date, Discount, Total),
+            TypeAtom = case Type of
+                           "sales" -> sales;
+                           "purchase" -> purchase
+                       end,
+            Invoice = new_invoice(TypeAtom, DocNo, BPartner, Date, Discount, Total),
             Result#{invoices := dict:store(DocNo,
                                            Invoice#invoice{lines=[InvoiceLine]},
                                            Invoices),
@@ -42,17 +50,18 @@ load_inventory_file_line(Line, Inventories) ->
     I = new_inventory(Product, Qty),
     dict:store(Product, I, Inventories).
 
-new_invoice(DocNo, Customer, TrxTs, Discount, Total) ->
+new_invoice(Type, DocNo, BPartner, TrxTs, Discount, Total) ->
     try
-        #invoice{doc_no=DocNo,
-                 customer=Customer,
+        #invoice{type=Type,
+                 doc_no=DocNo,
+                 bpartner=BPartner,
                  trx_ts=TrxTs,
                  discount=erlang:binary_to_integer(Discount),
                  total=erlang:binary_to_float(Total),
                  lines=[]}
     catch
         error:badarg -> throw({invalid_invoice,
-                               {DocNo, Customer, TrxTs, Discount, Total}})
+                               {Type, DocNo, BPartner, TrxTs, Discount, Total}})
     end.
 
 new_invoice_line(LineNo, Product, Qty, Price, LineAmt) ->
