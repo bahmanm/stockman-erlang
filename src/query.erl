@@ -217,9 +217,9 @@ total_sales_per_customer_test() ->
     [] = total_sales_per_customer(dict:new()),
 
     Invoices = dict:from_list(
-                 [{"i1", #invoice{doc_no="i1", customer="c1", total=10.0}},
-                  {"i2", #invoice{doc_no="i2", customer="c2", total=20.0}},
-                  {"i3", #invoice{doc_no="i3", customer="c1", total=30.5}}]
+                 [{"i1", #invoice{doc_no="i1", bpartner="c1", total=10.0}},
+                  {"i2", #invoice{doc_no="i2", bpartner="c2", total=20.0}},
+                  {"i3", #invoice{doc_no="i3", bpartner="c1", total=30.5}}]
                 ),
     [{"c1", 40.5}, {"c2", 20.0}] = total_sales_per_customer(Invoices).
 
@@ -227,9 +227,9 @@ customer_with_largest_sales_test() ->
     undefined = customer_with_largest_sales(dict:new()),
 
     Invoices = dict:from_list(
-                 [{"i1", #invoice{doc_no="i1", customer="c1", total=10.0}},
-                  {"i2", #invoice{doc_no="i2", customer="c2", total=20.0}},
-                  {"i3", #invoice{doc_no="i3", customer="c1", total=30.5}}]
+                 [{"i1", #invoice{doc_no="i1", bpartner="c1", total=10.0}},
+                  {"i2", #invoice{doc_no="i2", bpartner="c2", total=20.0}},
+                  {"i3", #invoice{doc_no="i3", bpartner="c1", total=30.5}}]
                 ),
     "c1" = customer_with_largest_sales(Invoices).
 
@@ -237,19 +237,19 @@ customers_with_least_sales_test() ->
     [] = customers_with_least_sales(2, dict:new()),
 
     Invoices = dict:from_list(
-                 [{"i1", #invoice{doc_no="i1", customer="c1", total=10.0}},
-                  {"i2", #invoice{doc_no="i2", customer="c2", total=20.0}},
-                  {"i3", #invoice{doc_no="i3", customer="c1", total=30.5}}]
+                 [{"i1", #invoice{doc_no="i1", bpartner="c1", total=10.0}},
+                  {"i2", #invoice{doc_no="i2", bpartner="c2", total=20.0}},
+                  {"i3", #invoice{doc_no="i3", bpartner="c1", total=30.5}}]
                 ),
     [{"c1", 40.5}, {"c2", 20.0}] = customers_with_least_sales(2, Invoices),
 
     Invoices1 = dict:from_list(
-                  [{"i1", #invoice{doc_no="i1", customer="c1", total=10.0}},
-                   {"i2", #invoice{doc_no="i2", customer="c2", total=20.0}},
-                   {"i3", #invoice{doc_no="i3", customer="c3", total=5.0}},
-                   {"i4", #invoice{doc_no="i4", customer="c4", total=41.0}},
-                   {"i5", #invoice{doc_no="i5", customer="c5", total=18.0}},
-                   {"i6", #invoice{doc_no="i6", customer="c1", total=30.5}}]
+                  [{"i1", #invoice{doc_no="i1", bpartner="c1", total=10.0}},
+                   {"i2", #invoice{doc_no="i2", bpartner="c2", total=20.0}},
+                   {"i3", #invoice{doc_no="i3", bpartner="c3", total=5.0}},
+                   {"i4", #invoice{doc_no="i4", bpartner="c4", total=41.0}},
+                   {"i5", #invoice{doc_no="i5", bpartner="c5", total=18.0}},
+                   {"i6", #invoice{doc_no="i6", bpartner="c1", total=30.5}}]
                  ),
     [{"c2", 20.0}, {"c5", 18.0}, {"c3", 5.0}] = customers_with_least_sales(3, Invoices1).
 
