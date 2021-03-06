@@ -35,12 +35,12 @@ $ _build/default/bin/stockman v2 ./test/resources/sales-invoices-tiny.csv
 # v3.0 #
 1. Read a CSV file into memory which contains product inventory.
 2. Read a CSV file into memory which contain sales invoice lines.
-  3. Check if the product referenced on each line has enough inventory.
-    4. If no, do not import the invoice to which the line belongs.
-    5. If yes, import the invoice line and update the inventory of the product
-       accordingly.
-  6. It is important to process the invoices in the order they appear in the CSV.
-7. Print a list of invoices listing the problematic line(s) for each invoice.
+3. Check if the product referenced on each line has enough inventory.
+   1. If no, do not import the invoice to which the line belongs.
+   2. If yes, import the invoice line and update the inventory of the product
+      accordingly.
+4. It is important to process the invoices in the order they appear in the CSV.
+5. Print a list of invoices listing the problematic line(s) for each invoice.
 
 ### Status ###
 done
@@ -59,12 +59,12 @@ $ _build/default/bin/stockman v3 dummy-data/invoices.csv dummy-data/inventory.cs
 
 1. Read a CSV file into memory which contains product inventory.
 2. Read a CSV file into memory which contain sales invoice lines, where each invoice has a timestamp denoting the transaction date and time.
-  3. Check if the product referenced on each line has enough inventory.
-    4. If no, do not import the invoice to which the line belongs.
-    5. If yes, import the invoice line and update the inventory of the product
-       accordingly.
-  6. It is important to process any given invoice only once all the other invoices with earlier timestamps have been processed.
-7. Print a list of invoices listing the problematic line(s) for each invoice.
+3. Check if the product referenced on each line has enough inventory.
+   1. If no, do not import the invoice to which the line belongs.
+   2. If yes, import the invoice line and update the inventory of the product
+      accordingly.
+4. It is important to process any given invoice only once all the other invoices with earlier timestamps have been processed.
+5. Print a list of invoices listing the problematic line(s) for each invoice.
 
 ### Status ###
 done
@@ -84,11 +84,11 @@ $ _build/default/bin/stockman v4 --sales-invoices dummy-data/invoices.csv --inve
 1. Read a CSV file into memory which contains product inventory.
 2. Read two CSV files into memory, one containing sales invoice lines and the other purchase invoice lines. Each invoice has a timestamp which denotes the transaction date and time.
 3. Check if the product referenced on each sales invoice line has enough inventory.
-    4. If no, do not import the sales invoice to which the line belongs.
-    5. If yes, import the invoice line and update the inventory of the product
-       accordingly.
-  6. It is important to process any given invoice only once all the other invoices (sales and purchase) with earlier timestamps have been processed.
-7. Print a list of sales invoices listing the problematic line(s) for each invoice.
+   1. If no, do not import the sales invoice to which the line belongs.
+   2. If yes, import the invoice line and update the inventory of the product
+      accordingly.
+4. It is important to process any given invoice only once all the other invoices (sales and purchase) with earlier timestamps have been processed.
+5. Print a list of sales invoices listing the problematic line(s) for each invoice.
 
 # License #
 All files are under [Apache License v2.0](http://www.apache.org/licenses/LICENSE-2.0), unless otherwise specified.
