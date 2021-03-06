@@ -3,28 +3,32 @@
 -export([main/1]).
 
 main(#{mode := "v1", sales_invoices := Filepath}) ->
-    #{invoices := Invoices} = loader:load_file(invoice, Filepath),
+    #{invoices := Invoices} =
+        loader:load_invoices_file(Filepath),
     v1(Invoices),
     erlang:halt(0);
 
 main(#{mode := "v2", sales_invoices := Filepath}) ->
-    #{invoices := Invoices} = loader:load_file(invoice, Filepath),
+    #{invoices := Invoices} =
+        loader:load_invoices_file(Filepath),
     v2(Invoices),
     erlang:halt(0);
 
 main(#{mode := "v3", sales_invoices := InvoicesFilepath,
-       inventories := InventoriesFilepath})
-->
-    Inventories = loader:load_file(inventory, InventoriesFilepath),
-    InvoicesResult = loader:load_file(invoice, InvoicesFilepath),
+       inventories := InventoriesFilepath}) ->
+    Inventories =
+        loader:load_inventories_file(InventoriesFilepath),
+    InvoicesResult =
+        loader:load_invoices_file(InvoicesFilepath),
     v3(Inventories, InvoicesResult),
     erlang:halt(0);
 
 main(#{mode := "v4", sales_invoices := InvoicesFilepath,
-       inventories := InventoriesFilepath})
-->
-    Inventories = loader:load_file(inventory, InventoriesFilepath),
-    InvoicesResult = loader:load_file(invoice, InvoicesFilepath),
+       inventories := InventoriesFilepath}) ->
+    Inventories =
+        loader:load_inventories_file(InventoriesFilepath),
+    InvoicesResult =
+        loader:load_invoices_file(InvoicesFilepath),
     v4(Inventories, InvoicesResult),
     erlang:halt(0);
 

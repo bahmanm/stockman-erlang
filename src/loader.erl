@@ -1,20 +1,21 @@
 -module(loader).
 -include_lib("./stockman.hrl").
--export([load_file/2]).
+-export([load_invoices_file/1, load_inventories_file/1]).
 
--spec load_file(invoice | inventory, Filepath :: string()) ->
-          dict:dict(string(), #inventory{})
-              | #{load_order => [string()],
-                  invoices => dict:dict(string(), #invoice{})}.
-load_file(invoice, Filepath) ->
+-spec load_invoices_file(Filepath :: string()) ->
+          #{load_order => [doc_no()], invoices => invoices()}.
+
+load_invoices_file(Filepath) ->
     Lines = load_lines(Filepath),
     #{load_order := Order} = Result =
         lists:foldl(fun load_invoice_file_line/2,
                     #{invoices => dict:new(), load_order => []},
                     Lines),
-    Result#{load_order := lists:reverse(Order)};
+    Result#{load_order := lists:reverse(Order)}.
 
-load_file(inventory, Filepath) ->
+-spec load_inventories_file(Filepath :: string()) -> inventories().
+
+load_inventories_file(Filepath) ->
     Lines = load_lines(Filepath),
     lists:foldl(fun load_inventory_file_line/2, dict:new(), Lines).
 

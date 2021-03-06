@@ -1,7 +1,11 @@
+-type doc_no() :: string().
+-type line_no() :: integer().
+-type product() :: string().
+
 -record(invoice_line,
         {
-         line_no :: integer(),
-         product :: string(),
+         line_no :: line_no(),
+         product :: product(),
          qty :: integer(),
          price :: float(),
          line_amt :: float()
@@ -10,7 +14,7 @@
 
 -record(invoice,
         {
-         doc_no :: string(),
+         doc_no :: doc_no(),
          bpartner :: string(),
          type :: atom(),
          trx_ts :: string(),
@@ -21,6 +25,9 @@
 
 -record(inventory,
         {
-         product :: string(),
+         product :: product(),
          qty :: integer()
         }).
+
+-type invoices() :: dict:dict(doc_no(), #invoice{}).
+-type inventories() :: dict:dict(product(), #inventory{}).

@@ -2,15 +2,12 @@
 -include("./stockman.hrl").
 -export([main/1]).
 
--type inventories() :: dict:dict(string(), #inventory{}).
--type invoices() :: dict:dict(string(), #invoice{}) | undefined.
-
 -record(data,
         {customers :: [string()],
          vendors :: [string()],
          inventories :: inventories(),
-         sinvoices :: invoices(),
-         pinvoices :: invoices()}).
+         sinvoices :: invoices() | undefined,
+         pinvoices :: invoices() | undefined}).
 
 main(Args) ->
     OptSpec =

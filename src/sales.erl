@@ -10,6 +10,13 @@ update_inventory(Product, Qty, Inventories) ->
             error
     end.
 
+-spec save_invoices(#{to_save => invoices(),
+                      inventories => inventories(),
+                      saved => invoices(),
+                      order => ascending_timestamp | [doc_no()]}) ->
+          {inventories(), invoices(), [ImportError]} when
+      ImportError :: #{invoice => #invoice{}, line_no => string()}.
+
 save_invoices(#{to_save := ToSave, order := ascending_timestamp,
                 inventories := Inventories, saved := Saved}) ->
     Order = sort_invoices_by_trx_ts(ToSave),
