@@ -66,6 +66,19 @@ $ _build/default/bin/stockman v3 dummy-data/invoices.csv dummy-data/inventory.cs
   6. It is important to process any given invoice only once all the other invoices with earlier timestamps have been processed.
 7. Print a list of invoices listing the problematic line(s) for each invoice.
 
+### Status ###
+done
+
+```
+## use datagen to generate dummy data
+$ rebar3 as datagen escriptize
+$ mkdir dummy-data
+$ _build/datagen/bin/datagen -o dummy-data --inventories 50 --customers 20 --sales-invoices 100 --invoice-lines 12
+## feed the data into stockman
+$ rebar3 escriptize
+$ _build/default/bin/stockman v4 --sales-invoices dummy-data/invoices.csv --inventories dummy-data/inventory.csv
+```
+
 # v5.0 #
 
 1. Read a CSV file into memory which contains product inventory.
