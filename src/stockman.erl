@@ -6,13 +6,13 @@ main(#{mode := "v1", sales_invoices := Filepath}) ->
     #{invoices := Invoices} =
         loader:load_invoices_file(Filepath),
     v1(Invoices),
-    erlang:halt(0);
+    ok;
 
 main(#{mode := "v2", sales_invoices := Filepath}) ->
     #{invoices := Invoices} =
         loader:load_invoices_file(Filepath),
     v2(Invoices),
-    erlang:halt(0);
+    ok;
 
 main(#{mode := "v3", sales_invoices := InvoicesFilepath,
        inventories := InventoriesFilepath}) ->
@@ -21,7 +21,7 @@ main(#{mode := "v3", sales_invoices := InvoicesFilepath,
     InvoicesResult =
         loader:load_invoices_file(InvoicesFilepath),
     v3(Inventories, InvoicesResult),
-    erlang:halt(0);
+    ok;
 
 main(#{mode := "v4", sales_invoices := InvoicesFilepath,
        inventories := InventoriesFilepath}) ->
@@ -30,27 +30,45 @@ main(#{mode := "v4", sales_invoices := InvoicesFilepath,
     InvoicesResult =
         loader:load_invoices_file(InvoicesFilepath),
     v4(Inventories, InvoicesResult),
-    erlang:halt(0);
+    ok;
 
-main(Args) ->
+main(#{mode := "v5",
+       sales_invoices := SInvoicesFilepath,
+       purchase_invoices := PInvoicesFilepath,
+       inventories := InventoriesFilepath}) ->
+    Inventories =
+        loader:load_inventories_file(InventoriesFilepath),
+    SInvoicesResult =
+        loader:load_invoices_file(SInvoicesFilepath),
+    PInvoicesResult =
+        loader:load_invoices_file(PInvoicesFilepath),
+    v5(Inventories, SInvoicesResult, PInvoicesResult),
+    ok;
+
+main(InvalidOptions) when is_map(InvalidOptions) ->
+    invalid_options;
+
+main(Args) when is_list(Args) ->
     OptSpec =
         [{mode, undefined, undefined, {string, "v4"},
-          "mode in which stockman operates - v1|v2|v3|v4"},
+          "mode in which stockman operates - v1|v2|v3|v4|v5"},
          {sales_invoices, undefined, "sales-invoices", string,
           "path to sales invoices csv file"},
+         {purchase_invoices, undefined, "purchase-invoices", string,
+          "path to purchase invoices csv file"},
          {inventories, undefined, "inventories", string,
           "path to inventories csv file"}],
     case getopt:parse(OptSpec, Args) of
         {ok, {OptionsTList, _}} ->
-            case maps:from_list(OptionsTList) of
-                #{mode := _, sales_invoices := _, inventories := _}=Options ->
-                    main(Options);
-                _ ->
-                    io:format("~s", [getopt:usage(OptSpec, "stockman")])
+            Options = maps:from_list(OptionsTList),
+            case main(Options) of
+                invalid_options -> io:format("~s~n",
+                                             [getopt:usage(OptSpec, "stockman")]);
+                _ -> void
             end;
         {error, Details} ->
-            io:format("~s~n~p~n", [getopt:usage(OptSpec, "stockman"),
-                                   Details])
+            io:format("~s~n~p~n",
+                      [getopt:usage(OptSpec, "stockman"), Details])
     end,
     erlang:halt(0).
 
@@ -123,6 +141,24 @@ v4(Inventories, #{invoices := InvoicesToImport}) ->
     {_, _, Errors} =
         sales:save_invoices(
           #{to_save => InvoicesToImport,
+            order => ascending_timestamp,
+            inventories => Inventories,
+            saved => dict:new()}),
+    lists:foreach(fun(#{invoice := Invoice, line_no := LineNo}) ->
+                          io:format("Line No: ~B~n", [LineNo]),
+                          printer:pprint(Invoice)
+                  end,
+                  Errors).
+
+v5(Inventories,
+   #{invoices := SInvoicesToImport},
+   #{invoices := PInvoicesToImport}) ->
+    Invoices = dict:merge(fun(_,V1,_) -> V1 end,
+                          SInvoicesToImport,
+                          PInvoicesToImport),
+    {_, _, Errors} =
+        sales:save_invoices(
+          #{to_save => Invoices,
             order => ascending_timestamp,
             inventories => Inventories,
             saved => dict:new()}),

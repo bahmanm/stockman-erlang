@@ -36,8 +36,8 @@ load_invoice_file_line(Line, #{invoices := Invoices, load_order := Order}=Result
                                            Invoices)};
         _ ->
             TypeAtom = case Type of
-                           "sales" -> sales;
-                           "purchase" -> purchase
+                           <<"sales">> -> sales;
+                           <<"purchase">> -> purchase
                        end,
             Invoice = new_invoice(TypeAtom, DocNo, BPartner, Date, Discount, Total),
             Result#{invoices := dict:store(DocNo,
