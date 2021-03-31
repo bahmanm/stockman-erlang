@@ -49,6 +49,13 @@ load_invoice_file_line(Line, #{invoices := Invoices, load_order := Order}=Result
 load_inventory_file_line(Line, Inventories) ->
     [Product, Qty] = string:split(Line, ",", all),
     I = new_inventory(Product, Qty),
+    try
+        Q = erlang:binary_to_integer(Qty),
+        inventory:move_in(Product, Q)
+    catch
+        error:badarg ->
+            throw({invalid_inventory, {Product, Qty}})
+    end,
     dict:store(Product, I, Inventories).
 
 new_invoice(Type, DocNo, BPartner, TrxTs, Discount, Total) ->

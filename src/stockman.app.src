@@ -1,3 +1,4 @@
+
 {application, stockman,
  [{description, "An escript"},
   {vsn, "0.1.0"},
@@ -8,7 +9,7 @@
     getopt]},
   {env,[]},
   {modules,
-   [stockman, loader, printer, query, datagen, sales]},
+   [stockman, loader, printer, query, datagen, sales, inventory]},
 
   {licenses, ["Apache 2.0"]},
   {links, []}]}.

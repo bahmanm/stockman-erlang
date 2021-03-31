@@ -66,8 +66,8 @@ save_invoice_line(InvoiceType,
                   [#invoice_line{product=P, qty=Q}=Line|Lines],
                   Inventories) ->
     Q1 = case InvoiceType of
-             sales -> -Q;
-             purchase -> Q
+             sales -> inventory:move_out(P,  Q), -Q;
+             purchase -> inventory:move_in(P, Q), Q
          end,
     case update_inventory(P, Q1, Inventories) of
         {ok, Inventories1} ->
