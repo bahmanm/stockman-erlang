@@ -1,15 +1,15 @@
+{application, stockman, [
+    {description, "An escript"},
+    {vsn, "0.1.0"},
+    {registered, []},
+    {applications, [
+        kernel,
+        stdlib,
+        getopt
+    ]},
+    {env, []},
+    {modules, [stockman, loader, printer, query, datagen, sales, inventory]},
 
-{application, stockman,
- [{description, "An escript"},
-  {vsn, "0.1.0"},
-  {registered, []},
-  {applications,
-   [kernel,
-    stdlib,
-    getopt]},
-  {env,[]},
-  {modules,
-   [stockman, loader, printer, query, datagen, sales, inventory]},
-
-  {licenses, ["Apache 2.0"]},
-  {links, []}]}.
+    {licenses, ["Apache 2.0"]},
+    {links, []}
+]}.
