@@ -114,7 +114,7 @@ handle_call({move_out, {P, Q}}, _, #state{items = Items} = S) ->
                     NewI = I#inventory{qty = (Current - Q)},
                     NewItems = dict:store(P, NewI, Items),
                     NewState = S#state{items = NewItems},
-                    {ok, NewState}
+                    {reply, ok, NewState}
             end;
         _ ->
             {reply, {error, unknown_product}, S}
@@ -141,12 +141,51 @@ handle_cast(_Request, State) ->
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 
-sales_shipment_test() ->
+move_out__test() ->
     Is0 = dict:new(),
     Is1 = dict:store("p1", #inventory{product = "p1", qty = 10}, Is0),
     State1 = #state{items = Is1},
-    {ok, #state{items = Is2} = _State2} =
-        impl_purchase_receipt({"p1", 10}, State1),
-    #inventory{product = "p1", qty = 20} = dict:fetch("p1", Is2).
+    {reply, ok, State2} = handle_call({move_out, {"p1", 2}}, from, State1),
+    {reply, {ok, 8}, State2} = handle_call({available_qty, "p1"}, from, State2).
+
+move_out__insufficient_inventory_test() ->
+    Is0 = dict:new(),
+    Is1 = dict:store("p1", #inventory{product = "p1", qty = 1}, Is0),
+    State1 = #state{items = Is1},
+    {reply, {error, insufficient_qty}, State1} = handle_call({move_out, {"p1", 2}}, from, State1),
+    {reply, {ok, 1}, State1} = handle_call({available_qty, "p1"}, from, State1).
+
+move_out__unknown_product_test() ->
+    Is0 = dict:new(),
+    Is1 = dict:store("p1", #inventory{product = "p1", qty = 1}, Is0),
+    State1 = #state{items = Is1},
+    {reply, {error, unknown_product}, State1} = handle_call(
+        {move_out, {"DOES NOT EXIST", 2}}, from, State1
+    ),
+    {reply, {ok, 1}, State1} = handle_call({available_qty, "p1"}, from, State1).
+
+move_in__test() ->
+    Is0 = dict:new(),
+    Is1 = dict:store("p1", #inventory{product = "p1", qty = 1}, Is0),
+    State1 = #state{items = Is1},
+    {reply, ok, State2} = handle_call({move_in, {"p1", 5}}, from, State1),
+    {reply, {ok, 6}, State2} = handle_call({available_qty, "p1"}, from, State2).
+
+move_in__new_product_test() ->
+    Is0 = dict:new(),
+    State1 = #state{items = Is0},
+    {reply, ok, State2} = handle_call({move_in, {"p1", 5}}, from, State1),
+    {reply, {ok, 5}, State2} = handle_call({available_qty, "p1"}, from, State2).
+
+available_qty__test() ->
+    Is0 = dict:new(),
+    Is1 = dict:store("p1", #inventory{product = "p1", qty = 5}, Is0),
+    State1 = #state{items = Is1},
+    {reply, {ok, 5}, State1} = handle_call({available_qty, "p1"}, from, State1).
+
+available_qty__unknown_product_test() ->
+    Is0 = dict:new(),
+    State1 = #state{items = Is0},
+    {reply, {error, unknown_product}, State1} = handle_call({available_qty, "p1"}, from, State1).
 
 -endif.
