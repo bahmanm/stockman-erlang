@@ -90,6 +90,45 @@ validate_invoice_line(#invoice_line{product = P, qty = Qty, price = Price, line_
             end
     end.
 
+-spec validate_invoice(Invoice :: #invoice{}) ->
+    ok | {error, [{LineNo :: integer(), Error :: any()}] | Error :: any()}.
+
+validate_invoice(#invoice{type = sales, total = Total, discount = Discount, lines = Lines}) ->
+    InvalidLines = lists:filtermap(
+        fun(#invoice_line{line_no = LineNo} = Line) ->
+            case validate_invoice_line(Line) of
+                {error, Error} -> {true, {LineNo, Error}};
+                _ -> false
+            end
+        end,
+        Lines
+    ),
+    case InvalidLines of
+        [] ->
+            if
+                (Discount < 0) or (Discount > 100) ->
+                    {error, invalid_discount};
+                true ->
+                    CalculatedTotal =
+                        (lists:foldl(
+                            fun(#invoice_line{line_amt = LineAmt}, Sum) ->
+                                Sum + LineAmt
+                            end,
+                            0,
+                            Lines
+                        ) *
+                            (100 - Discount)) / 100,
+                    if
+                        Total /= CalculatedTotal ->
+                            {error, invalid_total};
+                        true ->
+                            ok
+                    end
+            end;
+        _ ->
+            {error, InvalidLines}
+    end.
+
 -spec save_invoices(#{
     to_save => invoices(),
     inventories => inventories(),
@@ -337,5 +376,29 @@ validate_invoice_line__test() ->
     {error, insufficient_inventory} = validate_invoice_line(#invoice_line{
         product = "p1", qty = 10, price = 10.0, line_amt = 100.0
     }).
+
+validate_invoice__test() ->
+    InvalidLine1 = #invoice_line{line_no = 10, product = "p1", qty = 0, price = 10, line_amt = 0},
+    InvalidLine2 = #invoice_line{line_no = 20, product = "p1", qty = 10, price = 0, line_amt = 0},
+    InvalidInvoice1 = #invoice{
+        type = sales,
+        bpartner = "c1",
+        discount = 0,
+        total = 100,
+        lines = [InvalidLine1, InvalidLine2]
+    },
+    {error, [{10, invalid_qty}, {20, invalid_price}]} = validate_invoice(InvalidInvoice1),
+    %
+    ValidLine1 = #invoice_line{line_no = 10, product = "p1", qty = 2, price = 5, line_amt = 10},
+    ValidLine2 = #invoice_line{line_no = 20, product = "p2", qty = 4, price = 2, line_amt = 8},
+    InvalidInvoice2 = InvalidInvoice1#invoice{
+        lines = [ValidLine1, ValidLine2], discount = 0, total = 5
+    },
+    {error, invalid_total} = validate_invoice(InvalidInvoice2),
+    %
+    InvalidInvoice3 = InvalidInvoice2#invoice{
+        lines = [ValidLine1, ValidLine2], discount = 110, total = 18
+    },
+    {error, invalid_discount} = validate_invoice(InvalidInvoice3).
 
 -endif.
