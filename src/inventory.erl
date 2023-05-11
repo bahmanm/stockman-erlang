@@ -48,7 +48,7 @@ move_out(Product, Qty) ->
     {ok, Qty :: integer()} | {error, no_such_product}.
 
 available_qty(Product) ->
-    gen_server:call(?SERVER, {available_qty, {Product}}).
+    gen_server:call(?SERVER, {available_qty, Product}).
 
 %%------------------------------------------------------------------------------
 %% gen_server callbacks
@@ -87,7 +87,7 @@ init([]) ->
         {reply, {ok, Qty :: integer()} | {error, unknown_product}, NewState :: state()}.
 
 handle_call({move_in, {P, Q}}, _, #state{items = Items} = S) ->
-    Items1 =
+    ItemsWithP =
         case dict:is_key(P, Items) of
             true ->
                 Items;
@@ -98,9 +98,9 @@ handle_call({move_in, {P, Q}}, _, #state{items = Items} = S) ->
                     Items
                 )
         end,
-    #inventory{qty = Current} = I = dict:fetch(P, Items1),
-    NewI = I#inventory{qty = (Current + Q)},
-    NewItems = dict:store(P, NewI, Items1),
+    #inventory{qty = CurrentQty} = CurrentInventory = dict:fetch(P, ItemsWithP),
+    NewInventory = CurrentInventory#inventory{qty = (CurrentQty + Q)},
+    NewItems = dict:store(P, NewInventory, ItemsWithP),
     NewState = S#state{items = NewItems},
     {reply, ok, NewState};
 handle_call({move_out, {P, Q}}, _, #state{items = Items} = S) ->
@@ -120,6 +120,7 @@ handle_call({move_out, {P, Q}}, _, #state{items = Items} = S) ->
             {reply, {error, unknown_product}, S}
     end;
 handle_call({available_qty, P}, _, #state{items = Items} = S) ->
+    io:format("~p ~p ~p", [P, dict:is_key(P, Items), Items]),
     case dict:is_key(P, Items) of
         true ->
             #inventory{qty = Q} = dict:fetch(P, Items),
