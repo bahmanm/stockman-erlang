@@ -1,12 +1,94 @@
 -module(sales).
 
+-behaviour(gen_server).
+
 -include("./stockman.hrl").
 
 -export([save_invoices/1]).
 
+%% api
+-export([start/0]).
+-export([save_invoice/1]).
+
+%% gen_server
+-export([init/1]).
+
+%% macros
+-define(SERVER, ?MODULE).
+
+%% types
+-record(state, {items :: invoices()}).
+-type state() :: #state{}.
+
 %%------------------------------------------------------------------------------
 %% api
 %%------------------------------------------------------------------------------
+-spec start() ->
+    {ok, Pid :: pid()}
+    | {error, Error :: {already_started, pid()}}
+    | {error, Error :: term()}
+    | ignore.
+
+start() ->
+    gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
+
+%%---
+-spec save_invoice(Invoice :: #invoice{}) ->
+    ok | {error, list({LineNo :: int, Error :: any()})}.
+
+save_invoice(_Invoice) ->
+    ok.
+
+%%------------------------------------------------------------------------------
+%% gen_server callbacks
+%%------------------------------------------------------------------------------
+
+%%---
+%% @private
+%%---
+-spec init(Args :: term()) -> {ok, State :: term()}.
+
+init([]) ->
+    process_flag(trap_exit, true),
+    {ok, #state{items = dict:new()}}.
+
+%%---
+%% @private
+%%---
+-spec handle_call({save_invoice, Invoice :: #invoice{}}) ->
+    {reply, ok} | {reply, error, list({LineNo :: int, Error :: any()})}.
+
+handle_call({save_invoice, Invoice}) ->
+    ok.
+
+%%------------------------------------------------------------------------------
+%% private
+%%------------------------------------------------------------------------------
+
+%%---
+%% @private
+%%---
+-spec validate_invoice_line(InvoiceLine :: #invoice_line{}) ->
+    ok | {error, Error :: any()}.
+
+validate_invoice_line(#invoice_line{product = P, qty = Qty, price = Price, line_amt = LineAmt}) ->
+    if
+        Qty =< 0 ->
+            {error, invalid_qty};
+        Price =< 0 ->
+            {error, invalid_price};
+        (LineAmt =< 0) or (LineAmt /= (Qty * Price)) ->
+            {error, invalid_line_amt};
+        true ->
+            case inventory:available_qty(P) of
+                {ok, QAvailable} when Qty =< QAvailable ->
+                    ok;
+                {ok, _} ->
+                    {error, insufficient_inventory};
+                {error, _} = Error ->
+                    Error
+            end
+    end.
 
 -spec save_invoices(#{
     to_save => invoices(),
@@ -118,9 +200,9 @@ sort_invoices_by_trx_ts(Invoices) ->
         Sorted
     ).
 
-%%% %%%%%%%%
-%%% tests
-%%% %%%%%%%%
+%%------------------------------------------------------------------------------
+%% tests
+%%------------------------------------------------------------------------------
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
@@ -236,5 +318,24 @@ sort_invoices_by_trx_ts_test() ->
             ]
         ),
     ["i1", "i4", "i2", "i3"] = sort_invoices_by_trx_ts(Invoices).
+
+validate_invoice_line__test() ->
+    {error, invalid_qty} = validate_invoice_line(#invoice_line{
+        product = "p1", qty = 0, price = 10.0, line_amt = 0
+    }),
+    {error, invalid_price} = validate_invoice_line(#invoice_line{
+        product = "p1", qty = 10, price = 0.0, line_amt = 0
+    }),
+    {error, invalid_line_amt} = validate_invoice_line(#invoice_line{
+        product = "p1", qty = 10, price = 10.0, line_amt = 0
+    }),
+    {error, invalid_line_amt} = validate_invoice_line(#invoice_line{
+        product = "p1", qty = 10, price = 10.0, line_amt = 90.0
+    }),
+    meck:new(inventory),
+    meck:expect(inventory, available_qty, fun(_) -> {ok, 9} end),
+    {error, insufficient_inventory} = validate_invoice_line(#invoice_line{
+        product = "p1", qty = 10, price = 10.0, line_amt = 100.0
+    }).
 
 -endif.
