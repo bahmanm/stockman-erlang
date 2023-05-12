@@ -36,8 +36,8 @@ start() ->
 -spec save_invoice(Invoice :: #invoice{}) ->
     ok | {error, list({LineNo :: int, Error :: any()})}.
 
-save_invoice(_Invoice) ->
-    ok.
+save_invoice(Invoice) ->
+    gen_server:call(?SERVER, {save, Invoice}).
 
 %%------------------------------------------------------------------------------
 %% gen_server callbacks
@@ -55,15 +55,51 @@ init([]) ->
 %%---
 %% @private
 %%---
--spec handle_call({save_invoice, Invoice :: #invoice{}}) ->
-    {reply, ok} | {reply, error, list({LineNo :: int, Error :: any()})}.
+-spec handle_call({save, Invoice :: #invoice{}}, From :: any(), State :: state()) ->
+    {reply, ok, NewState :: state()}
+    | {reply, {error, list({LineNo :: int, Error :: any()}) | any()}, NewState :: state()}.
 
-handle_call({save_invoice, Invoice}) ->
-    ok.
+handle_call({save, Invoice}, _, State) ->
+    case validate_invoice(Invoice) of
+        ok ->
+            case do_save_invoice(Invoice, State) of
+                {ok, NewState} ->
+                    {reply, ok, NewState};
+                Error ->
+                    {reply, Error, State}
+            end;
+        Error ->
+            {reply, Error, State}
+    end.
 
 %%------------------------------------------------------------------------------
 %% private
 %%------------------------------------------------------------------------------
+
+%%---
+%% @private
+%%---
+-spec do_save_invoice(Invoice :: #invoice{}, State :: state()) ->
+    {ok, NewState :: state()} | {error, Error :: any()}.
+
+do_save_invoice(#invoice{lines = Lines, doc_no = DocNo} = Invoice, #state{items = Items} = State) ->
+    FailedLines = lists:filtermap(
+        fun(#invoice_line{product = P, qty = Q}) ->
+            case inventory:move_out(P, Q) of
+                ok ->
+                    false;
+                Error ->
+                    {true, Error}
+            end
+        end,
+        Lines
+    ),
+    case FailedLines of
+        [] ->
+            State#state{items = dict:store(DocNo, Invoice, Items)};
+        _ ->
+            FailedLines
+    end.
 
 %%---
 %% @private
