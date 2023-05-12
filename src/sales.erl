@@ -8,7 +8,7 @@
 
 %% api
 -export([start/0]).
--export([save_invoice/1]).
+-export([save_invoice/1, handle_call/3, handle_cast/2]).
 
 %% gen_server
 -export([init/1]).
@@ -72,6 +72,13 @@ handle_call({save, Invoice}, _, State) ->
             {reply, Error, State}
     end.
 
+
+%%---
+%% @private
+%%---
+handle_cast(_Request, State) ->
+    {noreply, State}.
+
 %%------------------------------------------------------------------------------
 %% private
 %%------------------------------------------------------------------------------
@@ -96,9 +103,9 @@ do_save_invoice(#invoice{lines = Lines, doc_no = DocNo} = Invoice, #state{items 
     ),
     case FailedLines of
         [] ->
-            State#state{items = dict:store(DocNo, Invoice, Items)};
+            {ok, State#state{items = dict:store(DocNo, Invoice, Items)}};
         _ ->
-            FailedLines
+            {error, FailedLines}
     end.
 
 %%---
