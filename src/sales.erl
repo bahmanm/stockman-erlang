@@ -72,7 +72,6 @@ handle_call({save, Invoice}, _, State) ->
             {reply, Error, State}
     end.
 
-
 %%---
 %% @private
 %%---
