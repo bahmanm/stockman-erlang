@@ -105,18 +105,30 @@ validate_invoice_line(
 %%---
 
 validate_invoice_line__test() ->
-    {error, invalid_qty} = validate_invoice_line(#invoice_line{
-        product = "p1", qty = 0, price = 10.0, line_amt = 0
-    }, fun(_) -> ok end),
-    {error, invalid_price} = validate_invoice_line(#invoice_line{
-        product = "p1", qty = 10, price = 0.0, line_amt = 0
-    }, fun(_) -> ok end),
-    {error, invalid_line_amt} = validate_invoice_line(#invoice_line{
-        product = "p1", qty = 10, price = 10.0, line_amt = 0
-    }, fun(_) -> ok end),
-    {error, invalid_line_amt} = validate_invoice_line(#invoice_line{
-        product = "p1", qty = 10, price = 10.0, line_amt = 90.0
-    }, fun(_) -> ok end).
+    {error, invalid_qty} = validate_invoice_line(
+        #invoice_line{
+            product = "p1", qty = 0, price = 10.0, line_amt = 0
+        },
+        fun(_) -> ok end
+    ),
+    {error, invalid_price} = validate_invoice_line(
+        #invoice_line{
+            product = "p1", qty = 10, price = 0.0, line_amt = 0
+        },
+        fun(_) -> ok end
+    ),
+    {error, invalid_line_amt} = validate_invoice_line(
+        #invoice_line{
+            product = "p1", qty = 10, price = 10.0, line_amt = 0
+        },
+        fun(_) -> ok end
+    ),
+    {error, invalid_line_amt} = validate_invoice_line(
+        #invoice_line{
+            product = "p1", qty = 10, price = 10.0, line_amt = 90.0
+        },
+        fun(_) -> ok end
+    ).
 
 %%---
 
