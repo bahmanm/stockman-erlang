@@ -94,7 +94,7 @@ handle_cast(_Request, State) ->
 %%------------------------------------------------------------------------------
 
 %%---
-%% @private
+%%
 %%---
 -spec do_save_invoice__no_validation(Invoice :: #invoice{}, State :: state()) ->
     {ok, NewState :: state()} | {error, Error :: any()}.
@@ -118,73 +118,6 @@ do_save_invoice__no_validation(
             {ok, State#state{items = dict:store(DocNo, Invoice, Items)}};
         _ ->
             {error, FailedLines}
-    end.
-
-%%---
-%% @private
-%%---
--spec validate_invoice_line(InvoiceLine :: #invoice_line{}) ->
-    ok | {error, Error :: any()}.
-
-validate_invoice_line(#invoice_line{product = P, qty = Qty, price = Price, line_amt = LineAmt}) ->
-    if
-        Qty =< 0 ->
-            {error, invalid_qty};
-        Price =< 0 ->
-            {error, invalid_price};
-        (LineAmt =< 0) or (LineAmt /= (Qty * Price)) ->
-            {error, invalid_line_amt};
-        true ->
-            case inventory:available_qty(P) of
-                {ok, QAvailable} when Qty =< QAvailable ->
-                    ok;
-                {ok, _} ->
-                    {error, insufficient_inventory};
-                {error, _} = Error ->
-                    Error
-            end
-    end.
-
-%%---
-%% @private
-%%---
--spec validate_invoice(Invoice :: #invoice{}) ->
-    ok | {error, [{LineNo :: integer(), Error :: any()}] | Error :: any()}.
-
-validate_invoice(#invoice{type = sales, total = Total, discount = Discount, lines = Lines}) ->
-    InvalidLines = lists:filtermap(
-        fun(#invoice_line{line_no = LineNo} = Line) ->
-            case validate_invoice_line(Line) of
-                {error, Error} -> {true, {LineNo, Error}};
-                _ -> false
-            end
-        end,
-        Lines
-    ),
-    case InvalidLines of
-        [] ->
-            if
-                (Discount < 0) or (Discount > 100) ->
-                    {error, invalid_discount};
-                true ->
-                    CalculatedTotal =
-                        (lists:foldl(
-                            fun(#invoice_line{line_amt = LineAmt}, Sum) ->
-                                Sum + LineAmt
-                            end,
-                            0,
-                            Lines
-                        ) *
-                            (100 - Discount)) / 100,
-                    if
-                        Total /= CalculatedTotal ->
-                            {error, invalid_total};
-                        true ->
-                            ok
-                    end
-            end;
-        _ ->
-            {error, InvalidLines}
     end.
 
 %%------------------------------------------------------------------------------
@@ -419,48 +352,5 @@ sort_invoices_by_trx_ts_test() ->
             ]
         ),
     ["i1", "i4", "i2", "i3"] = sort_invoices_by_trx_ts(Invoices).
-
-validate_invoice_line__test() ->
-    {error, invalid_qty} = validate_invoice_line(#invoice_line{
-        product = "p1", qty = 0, price = 10.0, line_amt = 0
-    }),
-    {error, invalid_price} = validate_invoice_line(#invoice_line{
-        product = "p1", qty = 10, price = 0.0, line_amt = 0
-    }),
-    {error, invalid_line_amt} = validate_invoice_line(#invoice_line{
-        product = "p1", qty = 10, price = 10.0, line_amt = 0
-    }),
-    {error, invalid_line_amt} = validate_invoice_line(#invoice_line{
-        product = "p1", qty = 10, price = 10.0, line_amt = 90.0
-    }),
-    meck:new(inventory),
-    meck:expect(inventory, available_qty, fun(_) -> {ok, 9} end),
-    {error, insufficient_inventory} = validate_invoice_line(#invoice_line{
-        product = "p1", qty = 10, price = 10.0, line_amt = 100.0
-    }).
-
-validate_invoice__test() ->
-    InvalidLine1 = #invoice_line{line_no = 10, product = "p1", qty = 0, price = 10, line_amt = 0},
-    InvalidLine2 = #invoice_line{line_no = 20, product = "p1", qty = 10, price = 0, line_amt = 0},
-    InvalidInvoice1 = #invoice{
-        type = sales,
-        bpartner = "c1",
-        discount = 0,
-        total = 100,
-        lines = [InvalidLine1, InvalidLine2]
-    },
-    {error, [{10, invalid_qty}, {20, invalid_price}]} = validate_invoice(InvalidInvoice1),
-    %
-    ValidLine1 = #invoice_line{line_no = 10, product = "p1", qty = 2, price = 5, line_amt = 10},
-    ValidLine2 = #invoice_line{line_no = 20, product = "p2", qty = 4, price = 2, line_amt = 8},
-    InvalidInvoice2 = InvalidInvoice1#invoice{
-        lines = [ValidLine1, ValidLine2], discount = 0, total = 5
-    },
-    {error, invalid_total} = validate_invoice(InvalidInvoice2),
-    %
-    InvalidInvoice3 = InvalidInvoice2#invoice{
-        lines = [ValidLine1, ValidLine2], discount = 110, total = 18
-    },
-    {error, invalid_discount} = validate_invoice(InvalidInvoice3).
 
 -endif.
