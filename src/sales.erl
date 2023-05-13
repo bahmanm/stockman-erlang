@@ -60,9 +60,20 @@ init([]) ->
     | {reply, {error, list({LineNo :: int, Error :: any()}) | any()}, NewState :: state()}.
 
 handle_call({save, Invoice}, _, State) ->
-    case validate_invoice(Invoice) of
+    case
+        invoice:validate_invoice(Invoice, fun(#invoice_line{product = P, qty = Qty}) ->
+            case inventory:available_qty(P) of
+                {ok, QAvailable} when Qty =< QAvailable ->
+                    ok;
+                {ok, _} ->
+                    {error, insufficient_inventory};
+                {error, _} = Error ->
+                    Error
+            end
+        end)
+    of
         ok ->
-            case do_save_invoice(Invoice, State) of
+            case do_save_invoice__no_validation(Invoice, State) of
                 {ok, NewState} ->
                     {reply, ok, NewState};
                 Error ->
@@ -85,10 +96,12 @@ handle_cast(_Request, State) ->
 %%---
 %% @private
 %%---
--spec do_save_invoice(Invoice :: #invoice{}, State :: state()) ->
+-spec do_save_invoice__no_validation(Invoice :: #invoice{}, State :: state()) ->
     {ok, NewState :: state()} | {error, Error :: any()}.
 
-do_save_invoice(#invoice{lines = Lines, doc_no = DocNo} = Invoice, #state{items = Items} = State) ->
+do_save_invoice__no_validation(
+    #invoice{lines = Lines, doc_no = DocNo} = Invoice, #state{items = Items} = State
+) ->
     FailedLines = lists:filtermap(
         fun(#invoice_line{product = P, qty = Q}) ->
             case inventory:move_out(P, Q) of
@@ -132,6 +145,9 @@ validate_invoice_line(#invoice_line{product = P, qty = Qty, price = Price, line_
             end
     end.
 
+%%---
+%% @private
+%%---
 -spec validate_invoice(Invoice :: #invoice{}) ->
     ok | {error, [{LineNo :: integer(), Error :: any()}] | Error :: any()}.
 
@@ -170,6 +186,10 @@ validate_invoice(#invoice{type = sales, total = Total, discount = Discount, line
         _ ->
             {error, InvalidLines}
     end.
+
+%%------------------------------------------------------------------------------
+%% public - old
+%%------------------------------------------------------------------------------
 
 -spec save_invoices(#{
     to_save => invoices(),
