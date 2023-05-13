@@ -60,18 +60,7 @@ init([]) ->
     | {reply, {error, list({LineNo :: int, Error :: any()}) | any()}, NewState :: state()}.
 
 handle_call({save, Invoice}, _, State) ->
-    case
-        invoice:validate_invoice(Invoice, fun(#invoice_line{product = P, qty = Qty}) ->
-            case inventory:available_qty(P) of
-                {ok, QAvailable} when Qty =< QAvailable ->
-                    ok;
-                {ok, _} ->
-                    {error, insufficient_inventory};
-                {error, _} = Error ->
-                    Error
-            end
-        end)
-    of
+    case invoice:validate_invoice(Invoice, fun additional_invoice_line_validation_function/1) of
         ok ->
             case do_save_invoice__no_validation(Invoice, State) of
                 {ok, NewState} ->
@@ -92,6 +81,19 @@ handle_cast(_Request, State) ->
 %%------------------------------------------------------------------------------
 %% private
 %%------------------------------------------------------------------------------
+
+%%---
+%%
+%%---
+additional_invoice_line_validation_function(#invoice_line{product = P, qty = Qty}) ->
+    case inventory:available_qty(P) of
+        {ok, QAvailable} when Qty =< QAvailable ->
+            ok;
+        {ok, _} ->
+            {error, insufficient_inventory};
+        {error, _} = Error ->
+            Error
+    end.
 
 %%---
 %%
