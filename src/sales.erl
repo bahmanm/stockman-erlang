@@ -1,6 +1,7 @@
 -module(sales).
 
 -behaviour(gen_server).
+-behaviour(invoice_validator).
 
 -include("./stockman.hrl").
 
@@ -8,10 +9,13 @@
 
 %% api
 -export([start/0]).
--export([save_invoice/1, handle_call/3, handle_cast/2]).
+-export([save_invoice/1]).
 
 %% gen_server
--export([init/1]).
+-export([init/1, handle_call/3, handle_cast/2]).
+
+%% invoice_validator
+-export([before_validate_invoice/1, before_validate_invoice_line/1]).
 
 %% macros
 -define(SERVER, ?MODULE).
@@ -60,7 +64,9 @@ init([]) ->
     | {reply, {error, list({LineNo :: int, Error :: any()}) | any()}, NewState :: state()}.
 
 handle_call({save, Invoice}, _, State) ->
-    case invoice:validate_invoice(Invoice, fun additional_invoice_line_validation_function/1) of
+    case
+        invoice_validator:validate(Invoice, ?MODULE)
+    of
         ok ->
             case do_save_invoice__no_validation(Invoice, State) of
                 {ok, NewState} ->
@@ -78,14 +84,20 @@ handle_call({save, Invoice}, _, State) ->
 handle_cast(_Request, State) ->
     {noreply, State}.
 
-%%------------------------------------------------------------------------------
-%% private
-%%------------------------------------------------------------------------------
+%%--------------------------------------------------------------------------------------------------
+%% invoice_validator callbacks
+%%--------------------------------------------------------------------------------------------------
 
 %%---
-%%
+%% @private
 %%---
-additional_invoice_line_validation_function(#invoice_line{product = P, qty = Qty}) ->
+before_validate_invoice(#invoice{}) ->
+    ok.
+
+%%---
+%% @private
+%%---
+before_validate_invoice_line(#invoice_line{product = P, qty = Qty}) ->
     case inventory:available_qty(P) of
         {ok, QAvailable} when Qty =< QAvailable ->
             ok;
@@ -94,6 +106,10 @@ additional_invoice_line_validation_function(#invoice_line{product = P, qty = Qty
         {error, _} = Error ->
             Error
     end.
+
+%%------------------------------------------------------------------------------
+%% private
+%%------------------------------------------------------------------------------
 
 %%---
 %%
