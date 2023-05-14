@@ -34,7 +34,7 @@ start() ->
 
 %%---
 -spec save_invoice(Invoice :: #invoice{}) ->
-    ok | {error, list({LineNo :: int, Error :: any()})}.
+    ok | {error, list({LineNo :: integer(), Error :: any()})}.
 
 save_invoice(Invoice) ->
     gen_server:call(?SERVER, {save, Invoice}).
@@ -123,7 +123,7 @@ do_save_invoice__no_validation(
     end.
 
 %%------------------------------------------------------------------------------
-%% public - old
+%% public (use by v3 and v4)
 %%------------------------------------------------------------------------------
 
 -spec save_invoices(#{
