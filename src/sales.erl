@@ -1,7 +1,7 @@
 -module(sales).
 
 -behaviour(gen_server).
--behaviour(invoice_validator).
+-behaviour(invoice).
 
 -include("./stockman.hrl").
 
@@ -9,13 +9,18 @@
 
 %% api
 -export([start/0]).
--export([save_invoice/1]).
+-export([save_invoice/1, save_via_invoice/1]).
 
 %% gen_server
 -export([init/1, handle_call/3, handle_cast/2]).
 
-%% invoice_validator
--export([before_validate_invoice/1, before_validate_invoice_line/1]).
+%% invoice
+-export([
+    before_validate_invoice/1,
+    before_validate_invoice_line/1,
+    before_store_invoice/1,
+    before_store_invoice_line/1
+]).
 
 %% macros
 -define(SERVER, ?MODULE).
@@ -27,6 +32,10 @@
 %%------------------------------------------------------------------------------
 %% api
 %%------------------------------------------------------------------------------
+
+%%---
+%%
+%%---
 -spec start() ->
     {ok, Pid :: pid()}
     | {error, Error :: {already_started, pid()}}
@@ -37,11 +46,19 @@ start() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
 %%---
+%%
+%%---
 -spec save_invoice(Invoice :: #invoice{}) ->
-    ok | {error, list({LineNo :: integer(), Error :: any()})}.
+    ok | {error, [{LineNo :: integer(), Error :: any()}]}.
 
 save_invoice(Invoice) ->
     gen_server:call(?SERVER, {save, Invoice}).
+
+%%---
+%%
+%%---
+save_via_invoice(Invoice) ->
+    gen_server:call(?SERVER, {save_via_invoice, Invoice}).
 
 %%------------------------------------------------------------------------------
 %% gen_server callbacks
@@ -64,9 +81,7 @@ init([]) ->
     | {reply, {error, list({LineNo :: int, Error :: any()}) | any()}, NewState :: state()}.
 
 handle_call({save, Invoice}, _, State) ->
-    case
-        invoice_validator:validate(Invoice, ?MODULE)
-    of
+    case invoice_validator:validate(Invoice, ?MODULE) of
         ok ->
             case do_save_invoice__no_validation(Invoice, State) of
                 {ok, NewState} ->
@@ -76,7 +91,9 @@ handle_call({save, Invoice}, _, State) ->
             end;
         Error ->
             {reply, Error, State}
-    end.
+    end;
+handle_call({save_via_invoice, Invoice}, _, State) ->
+    {reply, invoice:save(Invoice, ?MODULE), State}.
 
 %%---
 %% @private
@@ -85,7 +102,7 @@ handle_cast(_Request, State) ->
     {noreply, State}.
 
 %%--------------------------------------------------------------------------------------------------
-%% invoice_validator callbacks
+%% invoice callbacks
 %%--------------------------------------------------------------------------------------------------
 
 %%---
@@ -106,6 +123,18 @@ before_validate_invoice_line(#invoice_line{product = P, qty = Qty}) ->
         {error, _} = Error ->
             Error
     end.
+
+%%---
+%% @private
+%%---
+before_store_invoice(_) ->
+    ok.
+
+%%---
+%% @private
+%%---
+before_store_invoice_line(#invoice_line{product = P, qty = Q}) ->
+    inventory:move_out(P, Q).
 
 %%------------------------------------------------------------------------------
 %% private

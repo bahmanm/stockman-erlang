@@ -10,6 +10,8 @@
     line_amt :: float()
 }).
 
+-type invoice_line() :: #invoice_line{}.
+
 -record(invoice, {
     doc_no :: doc_no(),
     bpartner :: string(),
@@ -20,10 +22,14 @@
     lines :: [#invoice_line{}]
 }).
 
+-type invoice() :: #invoice{}.
+
 -record(inventory, {
     product :: product(),
     qty :: integer()
 }).
+
+-type inventory() :: #inventory{}.
 
 -type invoices() :: dict:dict(doc_no(), #invoice{}).
 -type inventories() :: dict:dict(product(), #inventory{}).
