@@ -119,7 +119,7 @@ do_save(Invoice, Subtype, State) ->
     ok | {error, [{LineNo :: integer(), Error :: any()}] | Error :: any()}.
 
 validate_invoice(
-    #invoice{type = sales, total = Total, discount = Discount, lines = Lines} = Invoice,
+    #invoice{total = Total, discount = Discount, lines = Lines} = Invoice,
     BeforeValidateInvoice,
     BeforeValidateInvoiceLine
 ) ->
