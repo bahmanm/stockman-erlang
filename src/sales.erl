@@ -58,7 +58,7 @@ save_invoice(Invoice) ->
 %%
 %%---
 save_via_invoice(Invoice) ->
-    gen_server:call(?SERVER, {save_via_invoice, Invoice}).
+    invoice:save(Invoice, ?MODULE).
 
 %%------------------------------------------------------------------------------
 %% gen_server callbacks
@@ -91,9 +91,7 @@ handle_call({save, Invoice}, _, State) ->
             end;
         Error ->
             {reply, Error, State}
-    end;
-handle_call({save_via_invoice, Invoice}, _, State) ->
-    {reply, invoice:save(Invoice, ?MODULE), State}.
+    end.
 
 %%---
 %% @private
