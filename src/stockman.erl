@@ -2,6 +2,13 @@
 -include("./stockman.hrl").
 -export([main/1]).
 
+%%--------------------------------------------------------------------------------------------------
+%% api
+%%--------------------------------------------------------------------------------------------------
+
+%%---
+%%
+%%---
 main(#{mode := "v1", sales_invoices := Filepath}) ->
     #{invoices := Invoices} =
         loader:load_invoices_file(Filepath),
@@ -81,9 +88,19 @@ main(Args) when is_list(Args) ->
     end,
     erlang:halt(0).
 
+%%--------------------------------------------------------------------------------------------------
+%% private
+%%--------------------------------------------------------------------------------------------------
+
+%%---
+%%
+%%---
 v1(Invoices) ->
     printer:pprint(Invoices).
 
+%%---
+%%
+%%---
 v2(Invoices) ->
     Separator = list_to_binary(lists:duplicate(20, "%")),
     case dict:is_empty(Invoices) of
@@ -147,6 +164,9 @@ v2(Invoices) ->
             io:fwrite("~s~n", [Separator])
     end.
 
+%%---
+%%
+%%---
 v3(Inventories, #{invoices := InvoicesToImport, load_order := Order}) ->
     {_, _, Errors} =
         sales:save_invoices(
@@ -165,6 +185,9 @@ v3(Inventories, #{invoices := InvoicesToImport, load_order := Order}) ->
         Errors
     ).
 
+%%---
+%%
+%%---
 v4(Inventories, #{invoices := InvoicesToImport}) ->
     {_, _, Errors} =
         sales:save_invoices(
@@ -183,29 +206,81 @@ v4(Inventories, #{invoices := InvoicesToImport}) ->
         Errors
     ).
 
+%%---
+%%
+%%---
 v5(
     Inventories,
     #{invoices := SInvoicesToImport},
     #{invoices := PInvoicesToImport}
 ) ->
-    Invoices = dict:merge(
-        fun(_, V1, _) -> V1 end,
-        SInvoicesToImport,
-        PInvoicesToImport
+    ok = v5_import_inventories(Inventories),
+    {DocNos, Invoices} = v5_combine_and_sort_invoices(SInvoicesToImport, PInvoicesToImport),
+    ImportResult = lists:map(
+        fun(DocNo) ->
+            case dict:fetch(DocNo, Invoices) of
+                #invoice{type = sales} = Invoice ->
+                    case sales:save_invoice(Invoice) of
+                        {error, Errors} ->
+                            {error, {DocNo, Errors}};
+                        _ ->
+                            ok
+                    end;
+                #invoice{type = purchase} = Invoice ->
+                    purchase:save_invoice(Invoice)
+            end
+        end,
+        DocNos
     ),
-    {_, _, Errors} =
-        sales:save_invoices(
-            #{
-                to_save => Invoices,
-                order => ascending_timestamp,
-                inventories => Inventories,
-                saved => dict:new()
-            }
-        ),
+    Errors = lists:filter(
+        fun
+            ({error, _}) -> true;
+            (_) -> false
+        end,
+        ImportResult
+    ),
     lists:foreach(
-        fun(#{invoice := Invoice, line_no := LineNo}) ->
-            io:format("Line No: ~B~n", [LineNo]),
-            printer:pprint(Invoice)
+        fun({error, {DocNo, DocErrors}}) ->
+            lists:foreach(
+                fun({LineNo, Error}) ->
+                    io:format("Line No: ~B, ~p~n", [LineNo, Error])
+                end,
+                DocErrors
+            ),
+            printer:pprint(dict:fetch(DocNo, Invoices))
         end,
         Errors
     ).
+
+%%---
+%%
+%%---
+v5_import_inventories(Inventories) ->
+    Products = dict:fetch_keys(Inventories),
+    v5_import_inventories(Products, Inventories).
+
+%%---
+%%
+%%---
+v5_import_inventories([], _) ->
+    ok;
+v5_import_inventories([P | Products], Inventories) ->
+    #inventory{product = P, qty = Q} = dict:fetch(P, Inventories),
+    ok = inventory:move_in(P, Q),
+    v5_import_inventories(Products, Inventories).
+
+%%---
+%%
+%%---
+v5_combine_and_sort_invoices(Invoices1, Invoices2) ->
+    Invoices = dict:merge(fun(_K, V1, _V2) -> V1 end, Invoices1, Invoices2),
+    UnsortedDocNos = dict:fetch_keys(Invoices),
+    SortedDocNos = lists:sort(
+        fun(D1, D2) ->
+            #invoice{trx_ts = Ts1} = dict:fetch(D1, Invoices),
+            #invoice{trx_ts = Ts2} = dict:fetch(D2, Invoices),
+            Ts1 < Ts2
+        end,
+        UnsortedDocNos
+    ),
+    {SortedDocNos, Invoices}.
