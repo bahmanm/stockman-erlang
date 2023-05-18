@@ -90,5 +90,8 @@ $ _build/default/bin/stockman v4 --sales-invoices dummy-data/invoices.csv --inve
 4. It is important to process any given invoice only once all the other invoices (sales and purchase) with earlier timestamps have been processed.
 5. Print a list of sales invoices listing the problematic line(s) for each invoice.
 
+### Status ###
+done
+
 # License #
 All files are under [Apache License v2.0](http://www.apache.org/licenses/LICENSE-2.0), unless otherwise specified.
